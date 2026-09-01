@@ -64,7 +64,7 @@ function RynHud.PatchState(patch)
     for key, value in pairs(patch) do
         if not valuesEqual(lastSent[key], value) then
             diff[key] = value
-            lastSent[key] = value
+            lastSent[key] = RynHud.DeepCopy(value)
             changed = true
         end
     end
@@ -74,7 +74,7 @@ function RynHud.PatchState(patch)
 end
 
 function RynHud.ForceState(state)
-    lastSent = state
+    lastSent = RynHud.DeepCopy(state) or {}
     RynHud.SendNui('setState', state)
 end
 

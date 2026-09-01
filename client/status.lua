@@ -1,3 +1,10 @@
+local function needValue(value, fallback)
+    if value == nil then
+        return fallback
+    end
+    return RynHud.Round(RynHud.Clamp(value, 0, 100))
+end
+
 CreateThread(function()
     while true do
         local wait = Config.StatusTick or 200
@@ -15,8 +22,8 @@ CreateThread(function()
             RynHud.PatchState({
                 health = RynHud.Round(RynHud.Clamp((health / maxHealth) * 100, 0, 100)),
                 armor = RynHud.Round(RynHud.Clamp(GetPedArmour(ped), 0, 100)),
-                hunger = RynHud.Round(RynHud.Clamp(needs.hunger, 0, 100)),
-                thirst = RynHud.Round(RynHud.Clamp(needs.thirst, 0, 100)),
+                hunger = needValue(needs.hunger, 100),
+                thirst = needValue(needs.thirst, 100),
                 stress = needs.stress ~= nil and RynHud.Round(RynHud.Clamp(needs.stress, 0, 100)) or nil,
             })
         else

@@ -9,6 +9,7 @@ local function closeAdmin()
     RynHud.AdminOpen = false
     SetNuiFocus(false, false)
     RynHud.SendNui('closeAdmin', {})
+    TriggerServerEvent('ryn-hud:server:requestTheme')
 end
 
 RegisterCommand(Config.AdminCommand, function()
@@ -42,7 +43,6 @@ end)
 
 RegisterNUICallback('closeAdmin', function(_, cb)
     closeAdmin()
-    TriggerServerEvent('ryn-hud:server:requestTheme')
     cb({ ok = true })
 end)
 
@@ -80,7 +80,6 @@ CreateThread(function()
             DisableControlAction(0, 322, true)
             if IsDisabledControlJustReleased(0, 322) then
                 closeAdmin()
-                TriggerServerEvent('ryn-hud:server:requestTheme')
             end
             Wait(0)
         else

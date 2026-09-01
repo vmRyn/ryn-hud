@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { HudState, SpeedStyle, Theme } from '../types'
 import HudIcon from './HudIcon.vue'
+import { useDropPulse } from '../useDropPulse'
 
 const props = defineProps<{
   active: boolean
@@ -106,26 +107,9 @@ const analogLabels = computed(() => analogMarks.value.filter((mark) => mark.kind
 const circularFill = computed(() => `${(speedPct.value * 75).toFixed(2)} 100`)
 const circularRpmFill = computed(() => `${((rpmPct.value / 100) * 75).toFixed(2)} 100`)
 const fuelIcon = computed(() => (props.state.vehicle.fuelKind === 'electric' ? 'bolt' : props.theme.icons.fuel))
-
-const engineHurt = ref(false)
-let engineHurtTimer = 0
-
-watch(
-  () => props.state.vehicle.engine,
-  (next, prev) => {
-    if (!props.active || typeof prev !== 'number' || next > prev - 2.5) return
-    engineHurt.value = false
-    requestAnimationFrame(() => {
-      engineHurt.value = true
-    })
-    window.clearTimeout(engineHurtTimer)
-    engineHurtTimer = window.setTimeout(() => {
-      engineHurt.value = false
-    }, 580)
-  },
-)
-
-onUnmounted(() => window.clearTimeout(engineHurtTimer))
+const engineHurt = useDropPulse(() => props.state.vehicle.engine, {
+  enabled: () => props.active,
+})
 </script>
 
 <template>

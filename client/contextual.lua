@@ -73,7 +73,10 @@ local function fireModeFor(hash)
     if type(stateMode) == 'string' and stateMode ~= '' then
         return stateMode:sub(1, 12)
     end
-    local group = GetWeapontypeGroup(hash)
+    local ok, group = pcall(GetWeapontypeGroup, hash)
+    if not ok then
+        return nil
+    end
     return FIRE_BY_GROUP[group]
 end
 

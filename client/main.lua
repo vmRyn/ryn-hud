@@ -3,7 +3,6 @@ RynHud.Loaded = false
 RynHud.Peeking = false
 RynHud.InVehicle = false
 RynHud.VehicleVisible = false
-RynHud.Obscured = false
 RynHud.AdminOpen = false
 
 local hideComponents = { 1, 2, 3, 4, 6, 7, 8, 9, 13, 17, 19, 20, 21, 22 }

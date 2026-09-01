@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import {
   shouldShowCoreStat,
   themeVisible,
@@ -9,6 +9,7 @@ import {
 } from '../types'
 import AmmoChip from './AmmoChip.vue'
 import StatusPill from './StatusPill.vue'
+import { useDropPulse } from '../useDropPulse'
 
 const props = defineProps<{
   state: HudState
@@ -35,25 +36,7 @@ const showAmmo = computed(
     (!!props.state.weapon?.hasAmmo || !!props.state.weapon?.label),
 )
 
-const healthHurt = ref(false)
-let healthHurtTimer = 0
-
-watch(
-  () => props.state.health,
-  (next, prev) => {
-    if (typeof prev !== 'number' || next > prev - 2.5) return
-    healthHurt.value = false
-    requestAnimationFrame(() => {
-      healthHurt.value = true
-    })
-    window.clearTimeout(healthHurtTimer)
-    healthHurtTimer = window.setTimeout(() => {
-      healthHurt.value = false
-    }, 580)
-  },
-)
-
-onUnmounted(() => window.clearTimeout(healthHurtTimer))
+const healthHurt = useDropPulse(() => props.state.health)
 </script>
 
 <template>

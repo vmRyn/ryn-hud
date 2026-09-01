@@ -286,3 +286,11 @@ function RynHud.SanitizeTheme(raw)
 
     return theme
 end
+
+function RynHud.IsAllowedIcon(name)
+    return type(name) == 'string' and ICON_NAMES[name] == true
+end
+
+function RynHud.SanitizeColor(value, default)
+    return sanitizeColor(value, default)
+end

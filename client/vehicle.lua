@@ -103,7 +103,7 @@ local function playSeatbeltSound(on)
     end
     RynHud.SendNui('playSound', {
         id = on and 'seatbeltOn' or 'seatbeltOff',
-        volume = tonumber(Config.SeatbeltSoundVolume) or 0.45,
+        volume = RynHud.Clamp(tonumber(Config.SeatbeltSoundVolume) or 0.45, 0, 1),
     })
 end
 

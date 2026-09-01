@@ -43,7 +43,7 @@ const mapVisible = computed(
     (theme.value.vehicle.minimapShape === 'circle' && theme.value.visibility.radarOnFoot && hudVisible.value && !cinematic.value),
 )
 
-const orbitStatus = computed(
+const liftStatusForMap = computed(
   () =>
     theme.value.vehicle.minimapShape === 'circle' &&
     theme.value.status.position === 'bottom-left' &&
@@ -78,13 +78,29 @@ function setMinimapShape(next: MinimapShape) {
   })
 }
 
+function setSpeedStyle(next: SpeedStyle) {
+  setTheme({
+    ...theme.value,
+    vehicle: {
+      ...theme.value.vehicle,
+      speedStyle: next,
+    },
+  })
+}
+
 function onMessage(event: MessageEvent) {
   const payload = event.data
   if (!payload || typeof payload !== 'object') return
   const action = payload.action as string
   const data = payload.data
-  if (action === 'setVisible') visible.value = Boolean(data)
-  if (action === 'setHudVisible') hudVisible.value = data?.visible !== false
+  if (action === 'setVisible') {
+    visible.value = Boolean(data)
+    return
+  }
+  if (action === 'setHudVisible') {
+    hudVisible.value = data?.visible !== false
+    return
+  }
   if (action === 'setCinematic') {
     cinematic.value = Boolean(data?.active)
     if (typeof data?.barHeight === 'number') {
@@ -97,16 +113,29 @@ function onMessage(event: MessageEvent) {
     if (cinematic.value) {
       adminOpen.value = false
     }
+    return
   }
-  if (action === 'patchState') patchState(data || {})
-  if (action === 'setState') patchState(data || {})
-  if (action === 'setTheme') setTheme(data)
-  if (action === 'setVehicleScene') vehicleScene.value = Boolean(data?.active)
+  if (action === 'patchState' || action === 'setState') {
+    patchState(data || {})
+    return
+  }
+  if (action === 'setTheme') {
+    setTheme(data)
+    return
+  }
+  if (action === 'setVehicleScene') {
+    vehicleScene.value = Boolean(data?.active)
+    return
+  }
   if (action === 'openAdmin') {
     adminOpen.value = true
     if (data?.theme) setTheme(data.theme)
+    return
   }
-  if (action === 'closeAdmin') adminOpen.value = false
+  if (action === 'closeAdmin') {
+    adminOpen.value = false
+    return
+  }
   if (action === 'playSound' && data?.id) {
     playHudSound(String(data.id), typeof data.volume === 'number' ? data.volume : 0.45)
   }
@@ -195,7 +224,7 @@ onUnmounted(() => {
         class="dock"
         :class="[
           theme.status.position,
-          { 'is-vehicle': vehicleScene || orbitStatus },
+          { 'is-vehicle': vehicleScene || liftStatusForMap },
         ]"
       >
         <StatusCluster :state="state" :theme="theme" />
