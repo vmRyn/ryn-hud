@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "preset": "nightGlass",
+  "accent": "#007BC7",
+  "surface": "rgba(8, 8, 8, 0.42)",
+  "surfaceStrong": "rgba(10, 10, 10, 0.92)",
+  "text": "#FFFFFF",
+  "muted": "rgba(236, 232, 225, 0.42)",
+  "warning": "#C7924A",
+  "critical": "#D45B4A",
+  "blur": 10,
+  "radius": 4,
+  "statusSize": 1,
+  "badgeStyle": "filled",
+  "badgeLayout": "ring",
+  "badgeShape": "circle",
+  "ringBackground": true,
+  "status": {
+    "position": "bottom-center",
+    "offsetX": 1.8,
+    "offsetY": 2.6
+  },
+  "compass": {
+    "position": "top-center",
+    "offsetX": 0,
+    "offsetY": 2
+  },
+  "identity": {
+    "position": "top-right",
+    "offsetX": 2.2,
+    "offsetY": 2
+  },
+  "compassBackground": true,
+  "icons": {
+    "health": "heart",
+    "armor": "shield",
+    "hunger": "utensils",
+    "thirst": "droplet",
+    "stress": "activity",
+    "fuel": "fuel",
+    "seatbelt": "seatbelt",
+    "voice": "mic",
+    "stamina": "wind",
+    "oxygen": "waves"
+  },
+  "colors": {
+    "health": "#D45B4A",
+    "armor": "#4CB8A8",
+    "hunger": "#D47A32",
+    "thirst": "#4A82C4",
+    "stress": "#8B6BC8",
+    "stamina": "#D4B46A",
+    "oxygen": "#5AA4B4",
+    "voice": "#E4DDD2"
+  },
+  "visibility": {
+    "compass": true,
+    "money": false,
+    "job": false,
+    "radarOnFoot": false,
+    "peekMoney": true,
+    "stress": false,
+    "voice": true,
+    "voiceModeLabel": true,
+    "waypoint": true,
+    "stamina": true,
+    "oxygen": true,
+    "ammo": true,
+    "parachute": true,
+    "harness": true
+  },
+  "thresholds": {
+    "hideArmorAtZero": true,
+    "hideNeedsWhenFull": true,
+    "needsFullAt": 95
+  },
+  "vehicle": {
+    "units": "mph",
+    "speedStyle": "digitalArc",
+    "showGear": true,
+    "showFuel": true,
+    "showEngine": true,
+    "showCruise": true,
+    "readoutBackground": true,
+    "minimapShape": "square"
+  }
+}
