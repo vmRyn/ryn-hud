@@ -92,6 +92,15 @@ export interface Theme {
   }
 }
 
+export type FuelKind = 'petrol' | 'electric'
+
+export interface ExtraStatus {
+  id: string
+  value: number
+  icon: string
+  color: string
+}
+
 export interface VehicleState {
   active: boolean
   speed: number
@@ -99,6 +108,7 @@ export interface VehicleState {
   gear: string
   fuel: number
   engine: number
+  fuelKind: FuelKind
   seatbelt: boolean
   seatbeltVisible: boolean
   cruise: boolean
@@ -118,7 +128,16 @@ export interface HudState {
   staminaActive: boolean
   oxygen: number
   oxygenActive: boolean
-  weapon: { show: boolean; hash?: number; clip?: number; reserve?: number; hasAmmo?: boolean } | null
+  weapon: {
+    show: boolean
+    hash?: number
+    clip?: number
+    reserve?: number
+    hasAmmo?: boolean
+    label?: string
+    fireMode?: string
+  } | null
+  extras: ExtraStatus[]
   parachute: boolean
   harness: boolean
   vehicle: VehicleState
@@ -244,6 +263,7 @@ export const defaultState: HudState = {
   oxygen: 100,
   oxygenActive: false,
   weapon: null,
+  extras: [],
   parachute: false,
   harness: false,
   vehicle: {
@@ -253,6 +273,7 @@ export const defaultState: HudState = {
     gear: 'N',
     fuel: 0,
     engine: 100,
+    fuelKind: 'petrol',
     seatbelt: false,
     seatbeltVisible: false,
     cruise: false,

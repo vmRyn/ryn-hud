@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import {
   shouldShowCoreStat,
   themeVisible,
@@ -29,8 +29,31 @@ function color(key: keyof Theme['colors']) {
 }
 
 const showAmmo = computed(
-  () => themeVisible(props.theme, 'ammo') && !!props.state.weapon?.show && !!props.state.weapon?.hasAmmo,
+  () =>
+    themeVisible(props.theme, 'ammo') &&
+    !!props.state.weapon?.show &&
+    (!!props.state.weapon?.hasAmmo || !!props.state.weapon?.label),
 )
+
+const healthHurt = ref(false)
+let healthHurtTimer = 0
+
+watch(
+  () => props.state.health,
+  (next, prev) => {
+    if (typeof prev !== 'number' || next > prev - 2.5) return
+    healthHurt.value = false
+    requestAnimationFrame(() => {
+      healthHurt.value = true
+    })
+    window.clearTimeout(healthHurtTimer)
+    healthHurtTimer = window.setTimeout(() => {
+      healthHurt.value = false
+    }, 580)
+  },
+)
+
+onUnmounted(() => window.clearTimeout(healthHurtTimer))
 </script>
 
 <template>
@@ -42,6 +65,9 @@ const showAmmo = computed(
         :clip="state.weapon.clip ?? 0"
         :reserve="state.weapon.reserve ?? 0"
         :color="theme.accent"
+        :label="state.weapon.label"
+        :fire-mode="state.weapon.fireMode"
+        :has-ammo="state.weapon.hasAmmo !== false"
       />
     </Transition>
 
@@ -60,6 +86,7 @@ const showAmmo = computed(
         :shape="shape"
         :badge-style="theme.badgeStyle"
         :ring-background="theme.ringBackground"
+        :hurt="healthHurt"
       />
       <StatusPill
         v-if="shouldShowCoreStat(theme, 'armor', state.armor)"
@@ -162,6 +189,17 @@ const showAmmo = computed(
         :value="100"
         icon="shield"
         :color="color('armor')"
+        :layout="layout"
+        :shape="shape"
+        :badge-style="theme.badgeStyle"
+        :ring-background="theme.ringBackground"
+      />
+      <StatusPill
+        v-for="extra in state.extras || []"
+        :key="`extra-${extra.id}`"
+        :value="extra.value"
+        :icon="extra.icon"
+        :color="extra.color"
         :layout="layout"
         :shape="shape"
         :badge-style="theme.badgeStyle"

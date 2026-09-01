@@ -95,6 +95,87 @@ end
 
 registerSeatbeltEvents()
 
+local ELECTRIC_MODELS = {
+    [`voltic`] = true,
+    [`voltic2`] = true,
+    [`neon`] = true,
+    [`raiden`] = true,
+    [`tezeract`] = true,
+    [`cyclone`] = true,
+    [`cyclone2`] = true,
+    [`iwagen`] = true,
+    [`omnisegt`] = true,
+    [`virtue`] = true,
+    [`powersurge`] = true,
+    [`khamelion`] = true,
+    [`dilettante`] = true,
+    [`dilettante2`] = true,
+    [`surge`] = true,
+    [`caddy`] = true,
+    [`caddy2`] = true,
+    [`caddy3`] = true,
+    [`airtug`] = true,
+}
+
+local function addElectricModel(entry)
+    if type(entry) == 'string' and entry ~= '' then
+        ELECTRIC_MODELS[joaat(entry)] = true
+    elseif type(entry) == 'number' then
+        ELECTRIC_MODELS[entry] = true
+    end
+end
+
+if type(Config.ElectricModels) == 'table' then
+    for key, value in pairs(Config.ElectricModels) do
+        if type(key) == 'string' then
+            addElectricModel(key)
+            if value ~= true and value ~= false then
+                addElectricModel(value)
+            end
+        elseif value == true and type(key) == 'number' then
+            addElectricModel(key)
+        else
+            addElectricModel(value)
+        end
+    end
+end
+
+local function isElectricVehicle(vehicle)
+    local okState, entState = pcall(function()
+        return Entity(vehicle).state
+    end)
+    if okState and entState then
+        local kind = entState.fuelType or entState.powertrain
+        if type(kind) == 'string' then
+            kind = kind:lower()
+            if kind == 'electric' or kind == 'ev' or kind == 'hybrid' then
+                return true
+            end
+            if kind == 'petrol' or kind == 'diesel' or kind == 'gas' then
+                return false
+            end
+        end
+        if entState.electric == true then
+            return true
+        end
+    end
+
+    if type(GetIsVehicleElectric) == 'function' then
+        local ok, electric = pcall(GetIsVehicleElectric, vehicle)
+        if ok and electric then
+            return true
+        end
+    end
+
+    local model = GetEntityModel(vehicle)
+    if ELECTRIC_MODELS[model] then
+        return true
+    end
+
+    local okTank, tank = pcall(GetVehicleHandlingFloat, vehicle, 'CHandlingData', 'fPetrolTankVolume')
+    return okTank and type(tank) == 'number' and tank <= 0.01
+end
+
 local function isAirborne(vehicle)
     local class = GetVehicleClass(vehicle)
     return class == 15 or class == 16
@@ -139,6 +220,7 @@ CreateThread(function()
                         rpm = RynHud.Round(RynHud.Clamp(rpm * 100, 0, 100)),
                         gear = gearLabel(vehicle, speedMs, airborne),
                         fuel = RynHud.Round(RynHud.Clamp(getFuel(vehicle), 0, 100)),
+                        fuelKind = isElectricVehicle(vehicle) and 'electric' or 'petrol',
                         engine = RynHud.Round(engine),
                         seatbelt = getSeatbelt(),
                         seatbeltVisible = seatbeltVisible,
@@ -159,6 +241,7 @@ CreateThread(function()
                             rpm = 0,
                             gear = 'N',
                             fuel = 0,
+                            fuelKind = 'petrol',
                             engine = 100,
                             seatbelt = false,
                             seatbeltVisible = false,

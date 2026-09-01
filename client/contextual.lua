@@ -2,6 +2,92 @@ local talking = false
 local voiceMode = 2
 local radio = false
 local peekUntil = 0
+local weaponCache = { hash = 0, label = '', fireMode = '' }
+
+local FIRE_BY_GROUP = {
+    [416676503] = 'Semi',
+    [3337201093] = 'Auto',
+    [970310034] = 'Auto',
+    [1159398588] = 'Auto',
+    [860033945] = 'Pump',
+    [3082541095] = 'Bolt',
+    [2725924767] = 'Auto',
+    [-728555052] = nil,
+    [-1609580060] = nil,
+    [690389602] = 'Single',
+}
+
+local weaponOverrides = {}
+
+local function addWeaponOverride(hash, label, fireMode)
+    if type(hash) == 'string' and hash ~= '' then
+        hash = joaat(hash)
+    end
+    if type(hash) ~= 'number' then
+        return
+    end
+    local prev = weaponOverrides[hash] or {}
+    if type(label) == 'string' and label ~= '' then
+        prev.label = label:sub(1, 32)
+    end
+    if type(fireMode) == 'string' and fireMode ~= '' then
+        prev.fireMode = fireMode:sub(1, 12)
+    end
+    weaponOverrides[hash] = prev
+end
+
+if type(Config.Weapons) == 'table' then
+    for key, value in pairs(Config.Weapons) do
+        if type(value) == 'string' then
+            addWeaponOverride(key, value, nil)
+        elseif type(value) == 'table' then
+            addWeaponOverride(value.hash or value.weapon or key, value.label or value.name, value.fireMode or value.mode)
+        end
+    end
+end
+
+local function prettyWeaponLabel(hash)
+    local override = weaponOverrides[hash]
+    if override and override.label then
+        return override.label
+    end
+    local ok, key = pcall(GetWeaponDisplayNameFromHash, hash)
+    if ok and type(key) == 'string' and key ~= '' and key ~= 'NULL' then
+        local text = GetLabelText(key)
+        if type(text) == 'string' and text ~= '' and text ~= 'NULL' then
+            return text
+        end
+        if not key:match('^WT_') then
+            return key
+        end
+    end
+    return ''
+end
+
+local function fireModeFor(hash)
+    local override = weaponOverrides[hash]
+    if override and override.fireMode then
+        return override.fireMode
+    end
+    local stateMode = LocalPlayer.state.weaponMode or LocalPlayer.state.fireMode
+    if type(stateMode) == 'string' and stateMode ~= '' then
+        return stateMode:sub(1, 12)
+    end
+    local group = GetWeapontypeGroup(hash)
+    return FIRE_BY_GROUP[group]
+end
+
+local function weaponMeta(hash)
+    if weaponCache.hash == hash then
+        return weaponCache.label, fireModeFor(hash) or weaponCache.fireMode
+    end
+    local label = prettyWeaponLabel(hash)
+    local fireMode = fireModeFor(hash) or ''
+    weaponCache.hash = hash
+    weaponCache.label = label
+    weaponCache.fireMode = fireMode
+    return label, fireMode
+end
 
 local directions = { 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW' }
 
@@ -77,12 +163,16 @@ local function currentWeapon(ped)
         reserve = 0
     end
 
+    local label, fireMode = weaponMeta(hash)
+
     return {
         show = true,
         hash = hash,
         clip = clip,
         reserve = reserve,
         hasAmmo = weaponUsesAmmo(ped, hash),
+        label = label,
+        fireMode = fireMode ~= '' and fireMode or nil,
     }
 end
 

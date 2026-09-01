@@ -4,9 +4,10 @@ A contextual FiveM HUD with a quiet on-foot cluster, a coordinated vehicle + min
 
 ## Features
 
-- Status cluster: health, armor, hunger, thirst, and stress when the framework provides it
-- Vehicle scene: digital, minimal, analog, or circular speedo — plus gear, fuel, engine, and a square or circular minimap
-- Contextual only: voice / radio, stamina, oxygen, weapon, parachute, harness
+- Status cluster: health, armor, hunger, thirst, and stress when the framework provides it — plus extra pills from other resources (`SetStatus`)
+- Vehicle scene: digital, minimal, analog, or circular speedo — plus gear, petrol or electric fuel, engine, and a square or circular minimap
+- Contextual only: voice / radio, stamina, oxygen, weapon name + fire mode, parachute, harness
+- Damage flash when health or engine drops
 - Optional compass + street, and cash / job chips (off by default; hold Left Alt or `/cash` to peek)
 - Admin look editor: colors, icons, visibility, vehicle units
 - Theme saved to `data/theme.json` and KVP, then broadcast to everyone
@@ -59,10 +60,12 @@ Edit [`config.lua`](config.lua):
 | `Config.CinematicBarHeight` | `11` | Top/bottom bar height (vh) |
 | `Config.MinimapDelayMs` | `80` | Radar waits so it does not pop before the swipe |
 | `Config.RadarHideAfterExitMs` | `420` | Matches the exit animation |
+| `Config.ElectricModels` | `{}` | Extra EV/hybrid spawn names or hashes |
+| `Config.Weapons` | `{}` | Custom weapon labels and fire modes |
 
 Fuel is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, or `ps-fuel` when started, otherwise native fuel. Seatbelt uses `LocalPlayer.state.seatbelt` and common toggle events.
 
-Other resources can toggle cinematic mode, hide the HUD, or read the current look:
+Other resources can toggle cinematic mode, hide the HUD, read the current look, or hang extra status pills on the cluster:
 
 ```lua
 exports['ryn-hud']:SetHudVisible(false)   -- death screens, minigames, cutscenes
@@ -74,7 +77,18 @@ exports['ryn-hud']:ToggleCinematic()
 exports['ryn-hud']:IsCinematic()
 
 exports['ryn-hud']:GetTheme()              -- current theme table (client or server)
+
+exports['ryn-hud']:SetStatus('drunk', {    -- extra pill on the status cluster
+    value = 40,
+    icon = 'waves',                        -- heart, shield, utensils, droplet, activity,
+    color = '#8B6BC8',                     -- fuel, seatbelt, mic, wind, waves, bolt, star, parachute
+})
+exports['ryn-hud']:SetStatus('drunk', 12)  -- update value only
+exports['ryn-hud']:RemoveStatus('drunk')
+exports['ryn-hud']:ClearStatuses()
 ```
+
+`AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
 
 The HUD also hides itself while the pause menu is open and while the screen is faded out.
 

@@ -24,6 +24,7 @@ client_scripts {
     'client/vehicle.lua',
     'client/radar.lua',
     'client/contextual.lua',
+    'client/extras.lua',
     'client/cinematic.lua',
     'client/visibility.lua',
     'client/admin.lua',

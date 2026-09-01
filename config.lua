@@ -45,5 +45,20 @@ Config.IdentityTick = 1000
 Config.MinimapDelayMs = 80
 Config.RadarHideAfterExitMs = 420
 
+-- Extra spawn names (or model hashes) treated as electric / hybrid (battery icon).
+-- Array or map — both work:
+--   { 'myev', 'customtesla' }
+--   { myev = true, [`customtesla`] = true }
+Config.ElectricModels = {
+    -- 'myev',
+}
+
+-- Custom / add-on weapons. Keys are WEAPON_* names or hashes.
+-- label = chip name, fireMode = Semi / Auto / Pump / Bolt / Single (optional).
+Config.Weapons = {
+    -- WEAPON_CUSTOMRIFLE = { label = 'AR-15', fireMode = 'Auto' },
+    -- ['WEAPON_BEANBAG'] = { label = 'Beanbag', fireMode = 'Pump' },
+}
+
 -- Print boot/framework info to the F8 console.
 Config.Debug = false

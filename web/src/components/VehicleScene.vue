@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { HudState, SpeedStyle, Theme } from '../types'
 import HudIcon from './HudIcon.vue'
 
@@ -105,6 +105,27 @@ const analogLabels = computed(() => analogMarks.value.filter((mark) => mark.kind
 
 const circularFill = computed(() => `${(speedPct.value * 75).toFixed(2)} 100`)
 const circularRpmFill = computed(() => `${((rpmPct.value / 100) * 75).toFixed(2)} 100`)
+const fuelIcon = computed(() => (props.state.vehicle.fuelKind === 'electric' ? 'bolt' : props.theme.icons.fuel))
+
+const engineHurt = ref(false)
+let engineHurtTimer = 0
+
+watch(
+  () => props.state.vehicle.engine,
+  (next, prev) => {
+    if (!props.active || typeof prev !== 'number' || next > prev - 2.5) return
+    engineHurt.value = false
+    requestAnimationFrame(() => {
+      engineHurt.value = true
+    })
+    window.clearTimeout(engineHurtTimer)
+    engineHurtTimer = window.setTimeout(() => {
+      engineHurt.value = false
+    }, 580)
+  },
+)
+
+onUnmounted(() => window.clearTimeout(engineHurtTimer))
 </script>
 
 <template>
@@ -247,10 +268,10 @@ const circularRpmFill = computed(() => `${((rpmPct.value / 100) * 75).toFixed(2)
           <div v-if="showMeta" class="meta">
             <span v-if="theme.vehicle.showGear && !airborne" class="gear">{{ state.vehicle.gear }}</span>
             <span v-if="theme.vehicle.showFuel" class="v-stat">
-              <HudIcon :name="theme.icons.fuel" :badge-style="theme.badgeStyle" />
+              <HudIcon :name="fuelIcon" :badge-style="theme.badgeStyle" />
               <i class="tick"><b :style="{ width: `${state.vehicle.fuel}%` }" /></i>
             </span>
-            <span v-if="theme.vehicle.showEngine" class="v-stat">
+            <span v-if="theme.vehicle.showEngine" class="v-stat" :class="{ 'is-hurt': engineHurt }">
               <em>eng</em>
               <i class="tick"><b :style="{ width: `${state.vehicle.engine}%` }" /></i>
             </span>

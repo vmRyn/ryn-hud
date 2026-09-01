@@ -105,8 +105,37 @@ function toggleWeapon() {
   emit('patch', {
     weapon: props.state.weapon?.show
       ? null
-      : { show: true, clip: 12, reserve: 228, hasAmmo: true },
+      : { show: true, clip: 12, reserve: 228, hasAmmo: true, label: 'AP Pistol', fireMode: 'Auto' },
   })
+}
+
+function toggleElectric() {
+  const electric = props.state.vehicle.fuelKind !== 'electric'
+  emit('patch', {
+    vehicle: { ...props.state.vehicle, fuelKind: electric ? 'electric' : 'petrol' },
+  })
+  if (!props.vehicleScene) enterVehicle(true)
+}
+
+function toggleExtra() {
+  const extras = props.state.extras || []
+  const on = extras.some((item) => item.id === 'drunk')
+  emit('patch', {
+    extras: on
+      ? extras.filter((item) => item.id !== 'drunk')
+      : [...extras, { id: 'drunk', value: 46, icon: 'waves', color: '#8B6BC8' }],
+  })
+}
+
+function hitHealth() {
+  emit('patch', { health: Math.max(0, props.state.health - 18) })
+}
+
+function hitEngine() {
+  emit('patch', {
+    vehicle: { ...props.state.vehicle, engine: Math.max(0, props.state.vehicle.engine - 22) },
+  })
+  if (!props.vehicleScene) enterVehicle(true)
 }
 
 function togglePeek() {
@@ -241,6 +270,10 @@ onUnmounted(() => {
         <button type="button" :class="{ on: state.staminaActive }" @click="toggleStamina">Stamina</button>
         <button type="button" :class="{ on: state.oxygenActive }" @click="toggleOxygen">Oxygen</button>
         <button type="button" :class="{ on: Boolean(state.weapon?.show) }" @click="toggleWeapon">Weapon</button>
+        <button type="button" :class="{ on: state.vehicle.fuelKind === 'electric' }" @click="toggleElectric">Electric</button>
+        <button type="button" :class="{ on: (state.extras || []).some((item) => item.id === 'drunk') }" @click="toggleExtra">Extra status</button>
+        <button type="button" @click="hitHealth">Hit health</button>
+        <button type="button" @click="hitEngine">Hit engine</button>
         <button type="button" :class="{ on: state.identity.showMoney }" @click="togglePeek">Peek cash</button>
         <button type="button" :class="{ on: state.vehicle.seatbelt }" @click="toggleBelt">Seatbelt</button>
         <button type="button" :class="{ on: state.vehicle.cruise }" @click="toggleCruise">Cruise</button>

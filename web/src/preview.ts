@@ -35,6 +35,7 @@ export function createMockState(): HudState {
     gear: '1',
     fuel: 68,
     engine: 92,
+    fuelKind: 'petrol',
     seatbelt: false,
     seatbeltVisible: true,
     cruise: false,
@@ -63,7 +64,7 @@ export const mockScenarios: Record<string, Partial<HudState>> = {
   combat: {
     health: 54,
     armor: 20,
-    weapon: { show: true, clip: 12, reserve: 228, hasAmmo: true },
+    weapon: { show: true, clip: 12, reserve: 228, hasAmmo: true, label: 'AP Pistol', fireMode: 'Auto' },
     voice: { talking: true, mode: 2, radio: true },
   },
 }

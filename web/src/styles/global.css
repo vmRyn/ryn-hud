@@ -240,6 +240,26 @@ select {
   width: 1.35vh;
   height: 1.35vh;
   opacity: 0.72;
+  flex: 0 0 auto;
+}
+
+.ammo-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12vh;
+  min-width: 0;
+}
+
+.ammo-name {
+  font-size: 0.95vh;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  max-width: 16vh;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ammo-text {
@@ -301,6 +321,24 @@ select {
 .stat.layout-ring.ring-bg {
   background: var(--surface);
   overflow: hidden;
+}
+
+.stat.is-hurt {
+  animation: hud-hurt 0.58s ease;
+}
+
+@keyframes hud-hurt {
+  0% {
+    filter: none;
+  }
+  16% {
+    filter: brightness(1.55);
+    box-shadow: 0 0 0.9vh color-mix(in srgb, var(--critical) 65%, transparent);
+  }
+  100% {
+    filter: none;
+    box-shadow: none;
+  }
 }
 
 .stat-ring {
@@ -610,6 +648,22 @@ select {
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
+}
+
+.v-stat.is-hurt .tick b {
+  background: var(--critical);
+  animation: hud-hurt-bar 0.58s ease;
+}
+
+@keyframes hud-hurt-bar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 0.35;
+    filter: brightness(1.8);
+  }
 }
 
 .belt {

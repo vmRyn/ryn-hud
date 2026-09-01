@@ -11,6 +11,7 @@ const props = defineProps<{
   shape: BadgeShape
   badgeStyle: BadgeStyle
   ringBackground?: boolean
+  hurt?: boolean
 }>()
 
 const clamped = computed(() => Math.max(0, Math.min(100, Math.round(props.value || 0))))
@@ -23,7 +24,7 @@ const roundedRing =
 <template>
   <div
     class="stat"
-    :class="[`layout-${layout}`, `shape-${shape}`, { 'ring-bg': showRingBg }]"
+    :class="[`layout-${layout}`, `shape-${shape}`, { 'ring-bg': showRingBg, 'is-hurt': hurt }]"
     :style="{ '--c': color, '--p': `${clamped}%` }"
   >
     <svg
