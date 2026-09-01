@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import StatusCluster from './components/StatusCluster.vue'
 import VehicleScene from './components/VehicleScene.vue'
 import CompassBar from './components/CompassBar.vue'
@@ -10,6 +10,7 @@ import DevTools from './components/dev/DevTools.vue'
 import { applyThemeVars, defaultState, defaultTheme, mergeTheme, type HudState, type MinimapShape, type SpeedStyle, type Theme } from './types'
 import { isBrowserPreview, nuiPost, setBrowserNuiHandler } from './nui'
 import { THEME_STORAGE_KEY, createMockState, mockScenarios, PREVIEW_BACKGROUND_URL } from './preview'
+import { playHudSound } from './sounds'
 
 const preview = isBrowserPreview()
 const visible = ref(false)
@@ -27,6 +28,14 @@ const adminRef = ref<{ sync: (theme: Theme) => void } | null>(null)
 
 applyThemeVars(theme.value)
 document.documentElement.style.setProperty('--cinematic-bar-height', `${cinematicBarHeight.value}vh`)
+
+watch(
+  () => state.vehicle.seatbelt,
+  (on, prev) => {
+    if (!preview || typeof prev !== 'boolean') return
+    playHudSound(on ? 'seatbeltOn' : 'seatbeltOff')
+  },
+)
 
 const mapVisible = computed(
   () =>
@@ -98,6 +107,9 @@ function onMessage(event: MessageEvent) {
     if (data?.theme) setTheme(data.theme)
   }
   if (action === 'closeAdmin') adminOpen.value = false
+  if (action === 'playSound' && data?.id) {
+    playHudSound(String(data.id), typeof data.volume === 'number' ? data.volume : 0.45)
+  }
 }
 
 function onKey(event: KeyboardEvent) {

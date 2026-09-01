@@ -95,6 +95,18 @@ end
 
 registerSeatbeltEvents()
 
+local lastSeatbeltSound = nil
+
+local function playSeatbeltSound(on)
+    if Config.SeatbeltSounds == false then
+        return
+    end
+    RynHud.SendNui('playSound', {
+        id = on and 'seatbeltOn' or 'seatbeltOff',
+        volume = tonumber(Config.SeatbeltSoundVolume) or 0.45,
+    })
+end
+
 local ELECTRIC_MODELS = {
     [`voltic`] = true,
     [`voltic2`] = true,
@@ -213,6 +225,11 @@ CreateThread(function()
                 local airborne = isAirborne(vehicle)
                 local class = GetVehicleClass(vehicle)
                 local seatbeltVisible = not airborne and class ~= 8 and class ~= 13 and class ~= 14 and class ~= 21
+                local seatbelt = getSeatbelt()
+                if seatbeltVisible and lastSeatbeltSound ~= nil and lastSeatbeltSound ~= seatbelt then
+                    playSeatbeltSound(seatbelt)
+                end
+                lastSeatbeltSound = seatbelt
                 RynHud.PatchState({
                     vehicle = {
                         active = true,
@@ -222,7 +239,7 @@ CreateThread(function()
                         fuel = RynHud.Round(RynHud.Clamp(getFuel(vehicle), 0, 100)),
                         fuelKind = isElectricVehicle(vehicle) and 'electric' or 'petrol',
                         engine = RynHud.Round(engine),
-                        seatbelt = getSeatbelt(),
+                        seatbelt = seatbelt,
                         seatbeltVisible = seatbeltVisible,
                         cruise = LocalPlayer.state.cruise == true,
                         airborne = airborne,
@@ -234,6 +251,7 @@ CreateThread(function()
                 if RynHud.InVehicle then
                     RynHud.InVehicle = false
                     RynHud.Seatbelt = false
+                    lastSeatbeltSound = nil
                     RynHud.PatchState({
                         vehicle = {
                             active = false,

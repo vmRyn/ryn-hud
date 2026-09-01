@@ -37,6 +37,9 @@ Config.SeatbeltEvents = {
     'cd_carhud:ToggleSeatbelt',
 }
 
+Config.SeatbeltSounds = true
+Config.SeatbeltSoundVolume = 0.45
+
 Config.StatusTick = 200
 Config.VehicleTick = 100
 Config.CompassTick = 400

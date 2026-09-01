@@ -59,7 +59,8 @@ Edit [`config.lua`](config.lua):
 | `Config.CinematicCommand` | `'cinematic'` | Toggle cinematic letterbox mode |
 | `Config.CinematicBarHeight` | `11` | Top/bottom bar height (vh) |
 | `Config.MinimapDelayMs` | `80` | Radar waits so it does not pop before the swipe |
-| `Config.RadarHideAfterExitMs` | `420` | Matches the exit animation |
+| `Config.SeatbeltSounds` | `true` | Buckle / unbuckle MP3s |
+| `Config.SeatbeltSoundVolume` | `0.45` | 0–1 NUI volume |
 | `Config.ElectricModels` | `{}` | Extra EV/hybrid spawn names or hashes |
 | `Config.Weapons` | `{}` | Custom weapon labels and fire modes |
 
