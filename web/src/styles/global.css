@@ -682,6 +682,29 @@ select {
   font-weight: 620;
 }
 
+.odo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35vh;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.odo b {
+  font-size: 1.35vh;
+  font-weight: 620;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.odo em {
+  font-style: normal;
+  font-size: 1.05vh;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .readout.style-minimal .readout-body {
   min-width: 0;
   gap: 0.25vh;

@@ -42,6 +42,9 @@ export function createMockState(): HudState {
     airborne: false,
     altitude: 0,
     heading: 0,
+    mileage: 12458,
+    mileageUnit: 'mi',
+    mileageVisible: true,
   }
   return state
 }

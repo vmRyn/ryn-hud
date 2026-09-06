@@ -47,4 +47,5 @@ files {
 -- ensure qb-core / qbx_core / es_extended
 -- ensure pma-voice
 -- ensure ox_fuel (or LegacyFuel / cdn-fuel)
+-- ensure jg-vehiclemileage  (optional; set Config.JGMileage = true)
 -- ensure ryn-hud

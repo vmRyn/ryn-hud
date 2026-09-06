@@ -101,6 +101,8 @@ export interface ExtraStatus {
   color: string
 }
 
+export type MileageUnit = 'mi' | 'km'
+
 export interface VehicleState {
   active: boolean
   speed: number
@@ -115,6 +117,10 @@ export interface VehicleState {
   airborne: boolean
   altitude: number
   heading: number
+  /** From jg-vehiclemileage when Config.JGMileage is enabled */
+  mileage: number
+  mileageUnit: MileageUnit
+  mileageVisible: boolean
 }
 
 export interface HudState {
@@ -280,6 +286,9 @@ export const defaultState: HudState = {
     airborne: false,
     altitude: 0,
     heading: 0,
+    mileage: 0,
+    mileageUnit: 'mi',
+    mileageVisible: false,
   },
   compass: {
     heading: 0,

@@ -110,6 +110,12 @@ const fuelIcon = computed(() => (props.state.vehicle.fuelKind === 'electric' ? '
 const engineHurt = useDropPulse(() => props.state.vehicle.engine, {
   enabled: () => props.active,
 })
+const mileageVisible = computed(() => props.state.vehicle.mileageVisible === true && !airborne.value)
+const mileageText = computed(() => {
+  const value = Math.max(0, Math.floor(props.state.vehicle.mileage || 0))
+  return value.toLocaleString('en-US')
+})
+const mileageUnit = computed(() => (props.state.vehicle.mileageUnit === 'km' ? 'km' : 'mi'))
 </script>
 
 <template>
@@ -258,6 +264,10 @@ const engineHurt = useDropPulse(() => props.state.vehicle.engine, {
             <span v-if="theme.vehicle.showEngine" class="v-stat" :class="{ 'is-hurt': engineHurt }">
               <em>eng</em>
               <i class="tick"><b :style="{ width: `${state.vehicle.engine}%` }" /></i>
+            </span>
+            <span v-if="mileageVisible" class="odo">
+              <b>{{ mileageText }}</b>
+              <em>{{ mileageUnit }}</em>
             </span>
             <span
               v-if="theme.vehicle.showCruise !== false && state.vehicle.cruise"

@@ -208,6 +208,82 @@ local function gearLabel(vehicle, speedMs, airborne)
     return tostring(gear)
 end
 
+local JG_MILEAGE_RESOURCE = 'jg-vehiclemileage'
+local jgMileageUnit = nil
+
+local function jgMileageEnabled()
+    return Config.JGMileage == true and resourceStarted(JG_MILEAGE_RESOURCE)
+end
+
+local function refreshJgMileageUnit()
+    if not jgMileageEnabled() then
+        jgMileageUnit = nil
+        return
+    end
+    local ok, unit = pcall(function()
+        return exports[JG_MILEAGE_RESOURCE]:getUnit()
+    end)
+    if ok and (unit == 'miles' or unit == 'kilometers') then
+        jgMileageUnit = unit
+    else
+        jgMileageUnit = 'miles'
+    end
+end
+
+-- Classes JG skips for the odometer (cycles/boats/heli/plane/service/trains).
+local function jgMileageClassAllowed(class)
+    return class ~= 13 and class ~= 14 and class ~= 15 and class ~= 16 and class ~= 17 and class ~= 21
+end
+
+-- JG stores km in entity state; only show once tracking has populated it.
+local function getJgMileage(vehicle, class)
+    if not jgMileageEnabled() or not jgMileageClassAllowed(class) then
+        return nil, nil
+    end
+    if not jgMileageUnit then
+        refreshJgMileageUnit()
+    end
+
+    local ok, state = pcall(function()
+        return Entity(vehicle).state
+    end)
+    if not ok or not state then
+        return nil, nil
+    end
+
+    local km = state.vehicleMileage
+    if type(km) ~= 'number' then
+        return nil, nil
+    end
+
+    local unit = jgMileageUnit or 'miles'
+    local value = unit == 'miles' and (km * 0.621371) or km
+    return math.floor(value), unit == 'miles' and 'mi' or 'km'
+end
+
+CreateThread(function()
+    while true do
+        if Config.JGMileage == true then
+            refreshJgMileageUnit()
+        else
+            jgMileageUnit = nil
+        end
+        Wait(5000)
+    end
+end)
+
+AddEventHandler('onResourceStart', function(resource)
+    if resource == JG_MILEAGE_RESOURCE and Config.JGMileage == true then
+        refreshJgMileageUnit()
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == JG_MILEAGE_RESOURCE then
+        jgMileageUnit = nil
+    end
+end)
+
 CreateThread(function()
     while true do
         local wait = Config.VehicleTick or 100
@@ -230,6 +306,8 @@ CreateThread(function()
                     playSeatbeltSound(seatbelt)
                 end
                 lastSeatbeltSound = seatbelt
+                local mileage, mileageUnit = getJgMileage(vehicle, class)
+                local showMileage = mileage ~= nil
                 RynHud.PatchState({
                     vehicle = {
                         active = true,
@@ -245,6 +323,9 @@ CreateThread(function()
                         airborne = airborne,
                         altitude = airborne and RynHud.Round(GetEntityHeightAboveGround(vehicle)) or 0,
                         heading = airborne and RynHud.Round(GetEntityHeading(vehicle)) or 0,
+                        mileage = showMileage and mileage or 0,
+                        mileageUnit = mileageUnit or 'mi',
+                        mileageVisible = showMileage,
                     },
                 })
             else
@@ -267,6 +348,9 @@ CreateThread(function()
                             airborne = false,
                             altitude = 0,
                             heading = 0,
+                            mileage = 0,
+                            mileageUnit = 'mi',
+                            mileageVisible = false,
                         },
                     })
                 end

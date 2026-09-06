@@ -29,6 +29,12 @@ Config.FuelProviders = {
     { resource = 'lj-fuel', export = 'GetFuel' },
 }
 
+-- Show odometer from jg-vehiclemileage inside the vehicle HUD.
+-- https://github.com/jgscripts/jg-vehiclemileage
+-- When true: ensure jg-vehiclemileage is started, and set its Config.ShowMileage = false
+-- so the default JG odometer UI does not stack on top of this HUD.
+Config.JGMileage = false
+
 -- Seatbelt toggle events from other resources (handler registered for each).
 Config.SeatbeltEvents = {
     'seatbelt:client:ToggleSeatbelt',
