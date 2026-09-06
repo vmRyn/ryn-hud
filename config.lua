@@ -51,6 +51,12 @@ Config.VehicleTick = 100
 Config.CompassTick = 400
 Config.IdentityTick = 1000
 
+-- Display HP that maps to a full health glyph (GTA ped: entity 100 + this value).
+-- Health above this (e.g. drugs raising max/current) shows as overheal on the glyph.
+Config.BaseMaxHealth = 100
+-- Hard cap for displayed overheal (100 = normal full, 150 = +50 overflow).
+Config.MaxDisplayHealth = 150
+
 Config.MinimapDelayMs = 80
 Config.RadarHideAfterExitMs = 420
 

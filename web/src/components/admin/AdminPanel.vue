@@ -74,7 +74,7 @@ const coreEditors: {
   label: string
   sample: number
 }[] = [
-  { iconKey: 'health', colorKey: 'health', label: 'Health', sample: 78 },
+  { iconKey: 'health', colorKey: 'health', label: 'Health', sample: 110 },
   { iconKey: 'armor', colorKey: 'armor', label: 'Armor', sample: 42 },
   { iconKey: 'hunger', colorKey: 'hunger', label: 'Hunger', sample: 71 },
   { iconKey: 'thirst', colorKey: 'thirst', label: 'Thirst', sample: 64 },

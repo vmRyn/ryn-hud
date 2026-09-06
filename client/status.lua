@@ -5,22 +5,32 @@ local function needValue(value, fallback)
     return RynHud.Round(RynHud.Clamp(value, 0, 100))
 end
 
+local function displayHealth(ped)
+    local base = tonumber(Config.BaseMaxHealth) or 100
+    if base <= 0 then
+        base = 100
+    end
+    local cap = tonumber(Config.MaxDisplayHealth) or 150
+    if cap < base then
+        cap = base
+    end
+
+    -- Absolute HP vs fixed base (not current max), so raised max/overheal reads >100.
+    local raw = GetEntityHealth(ped) - 100
+    if raw < 0 then
+        raw = 0
+    end
+    return RynHud.Round(RynHud.Clamp((raw / base) * 100, 0, cap))
+end
+
 CreateThread(function()
     while true do
         local wait = Config.StatusTick or 200
         if RynHud.Loaded then
             local ped = PlayerPedId()
-            local health = GetEntityHealth(ped) - 100
-            if health < 0 then
-                health = 0
-            end
-            local maxHealth = GetEntityMaxHealth(ped) - 100
-            if maxHealth <= 0 then
-                maxHealth = 100
-            end
             local needs = RynHud.GetBridge().getNeeds()
             RynHud.PatchState({
-                health = RynHud.Round(RynHud.Clamp((health / maxHealth) * 100, 0, 100)),
+                health = displayHealth(ped),
                 armor = RynHud.Round(RynHud.Clamp(GetPedArmour(ped), 0, 100)),
                 hunger = needValue(needs.hunger, 100),
                 thirst = needValue(needs.thirst, 100),

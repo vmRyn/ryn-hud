@@ -131,6 +131,10 @@ function hitHealth() {
   emit('patch', { health: Math.max(0, props.state.health - 18) })
 }
 
+function overheal() {
+  emit('patch', { health: Math.min(150, Math.max(110, props.state.health + 10)) })
+}
+
 function hitEngine() {
   emit('patch', {
     vehicle: { ...props.state.vehicle, engine: Math.max(0, props.state.vehicle.engine - 22) },
@@ -256,7 +260,7 @@ onUnmounted(() => {
         <button type="button" @click="emit('scenario', 'critical')">Critical</button>
         <button type="button" @click="emit('scenario', 'combat')">Combat</button>
       </div>
-      <label>Health {{ state.health }}<input type="range" min="0" max="100" :value="state.health" @input="setVital('health', Number(($event.target as HTMLInputElement).value))" /></label>
+      <label>Health {{ state.health }}<input type="range" min="0" max="150" :value="state.health" @input="setVital('health', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Armor {{ state.armor }}<input type="range" min="0" max="100" :value="state.armor" @input="setVital('armor', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Hunger {{ state.hunger }}<input type="range" min="0" max="100" :value="state.hunger" @input="setVital('hunger', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Thirst {{ state.thirst }}<input type="range" min="0" max="100" :value="state.thirst" @input="setVital('thirst', Number(($event.target as HTMLInputElement).value))" /></label>
@@ -273,6 +277,7 @@ onUnmounted(() => {
         <button type="button" :class="{ on: state.vehicle.fuelKind === 'electric' }" @click="toggleElectric">Electric</button>
         <button type="button" :class="{ on: (state.extras || []).some((item) => item.id === 'drunk') }" @click="toggleExtra">Extra status</button>
         <button type="button" @click="hitHealth">Hit health</button>
+        <button type="button" :class="{ on: state.health > 100 }" @click="overheal">Overheal</button>
         <button type="button" @click="hitEngine">Hit engine</button>
         <button type="button" :class="{ on: state.identity.showMoney }" @click="togglePeek">Peek cash</button>
         <button type="button" :class="{ on: state.vehicle.seatbelt }" @click="toggleBelt">Seatbelt</button>

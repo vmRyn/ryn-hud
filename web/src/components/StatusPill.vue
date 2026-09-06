@@ -14,8 +14,12 @@ const props = defineProps<{
   hurt?: boolean
 }>()
 
-const clamped = computed(() => Math.max(0, Math.min(100, Math.round(props.value || 0))))
-const offset = computed(() => 100 - clamped.value)
+const raw = computed(() => Math.max(0, Math.round(props.value || 0)))
+const fill = computed(() => Math.min(100, raw.value))
+const overflow = computed(() => Math.max(0, raw.value - 100))
+const overheal = computed(() => overflow.value > 0)
+const offset = computed(() => 100 - fill.value)
+const overflowOffset = computed(() => 100 - Math.min(100, overflow.value))
 const showRingBg = computed(() => props.layout === 'ring' && props.ringBackground === true)
 const roundedRing =
   'M18 3H25A8 8 0 0 1 33 11V25A8 8 0 0 1 25 33H11A8 8 0 0 1 3 25V11A8 8 0 0 1 11 3H18'
@@ -24,8 +28,12 @@ const roundedRing =
 <template>
   <div
     class="stat"
-    :class="[`layout-${layout}`, `shape-${shape}`, { 'ring-bg': showRingBg, 'is-hurt': hurt }]"
-    :style="{ '--c': color, '--p': `${clamped}%` }"
+    :class="[
+      `layout-${layout}`,
+      `shape-${shape}`,
+      { 'ring-bg': showRingBg, 'is-hurt': hurt, 'is-overheal': overheal },
+    ]"
+    :style="{ '--c': color, '--p': `${fill}%`, '--o': `${Math.min(100, overflow)}%` }"
   >
     <svg
       v-if="layout === 'ring'"
@@ -52,6 +60,16 @@ const roundedRing =
         stroke-dasharray="100"
         :stroke-dashoffset="offset"
       />
+      <circle
+        v-if="shape === 'circle' && overheal"
+        class="overflow"
+        cx="18"
+        cy="18"
+        r="15.2"
+        pathLength="100"
+        stroke-dasharray="100"
+        :stroke-dashoffset="overflowOffset"
+      />
       <path v-if="shape === 'rounded'" class="track" :d="roundedRing" pathLength="100" />
       <path
         v-if="shape === 'rounded'"
@@ -61,12 +79,20 @@ const roundedRing =
         stroke-dasharray="100"
         :stroke-dashoffset="offset"
       />
+      <path
+        v-if="shape === 'rounded' && overheal"
+        class="overflow"
+        :d="roundedRing"
+        pathLength="100"
+        stroke-dasharray="100"
+        :stroke-dashoffset="overflowOffset"
+      />
     </svg>
-    <span v-if="layout === 'fill'" class="stat-fill"><i /></span>
+    <span v-if="layout === 'fill'" class="stat-fill"><i /><em v-if="overheal" /></span>
     <div class="stat-face">
       <HudIcon :name="icon" :badge-style="badgeStyle" />
-      <b v-if="layout === 'percent'">{{ clamped }}%</b>
+      <b v-if="layout === 'percent'">{{ raw }}%</b>
     </div>
-    <span v-if="layout === 'bars'" class="stat-bar"><i /></span>
+    <span v-if="layout === 'bars'" class="stat-bar"><i /><em v-if="overheal" /></span>
   </div>
 </template>

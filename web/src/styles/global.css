@@ -327,6 +327,19 @@ select {
   animation: hud-hurt 0.58s ease;
 }
 
+.stat.is-overheal:not(.is-hurt) {
+  animation: hud-overheal-glow 1.8s ease-in-out infinite;
+}
+
+.stat.is-overheal .stat-face .hud-icon {
+  animation: hud-overheal-icon 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 0.45vh color-mix(in srgb, var(--c) 75%, white));
+}
+
+.stat.is-overheal.layout-percent b {
+  color: color-mix(in srgb, var(--c) 55%, white);
+}
+
 @keyframes hud-hurt {
   0% {
     filter: none;
@@ -338,6 +351,30 @@ select {
   100% {
     filter: none;
     box-shadow: none;
+  }
+}
+
+@keyframes hud-overheal-glow {
+  0%,
+  100% {
+    filter: brightness(1.05);
+    box-shadow: 0 0 0.35vh color-mix(in srgb, var(--c) 35%, transparent);
+  }
+  50% {
+    filter: brightness(1.18);
+    box-shadow: 0 0 0.85vh color-mix(in srgb, var(--c) 55%, white);
+  }
+}
+
+@keyframes hud-overheal-icon {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.92;
+    transform: scale(1.06);
   }
 }
 
@@ -367,6 +404,15 @@ select {
   transition: stroke-dashoffset 180ms linear;
 }
 
+.stat-ring .overflow {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 45%, white);
+  stroke-width: 3.1;
+  stroke-linecap: butt;
+  filter: drop-shadow(0 0 0.35vh color-mix(in srgb, var(--c) 70%, white));
+  transition: stroke-dashoffset 180ms linear;
+}
+
 .stat-fill {
   position: absolute;
   inset: 0;
@@ -379,6 +425,17 @@ select {
   height: var(--p);
   background: var(--c);
   transition: height 180ms linear;
+}
+
+.stat-fill em {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--o);
+  background: color-mix(in srgb, var(--c) 40%, white);
+  opacity: 0.85;
+  pointer-events: none;
 }
 
 .hud-icon {
@@ -467,6 +524,7 @@ select {
 }
 
 .stat-bar {
+  position: relative;
   flex: 1;
   height: 0.62vh;
   border-radius: 99px;
@@ -481,6 +539,17 @@ select {
   background: var(--c);
   border-radius: inherit;
   transition: width 180ms linear;
+}
+
+.stat-bar em {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--o);
+  background: color-mix(in srgb, var(--c) 40%, white);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .vehicle-scene {
