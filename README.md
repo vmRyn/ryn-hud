@@ -1,18 +1,22 @@
 # ryn-hud
 
-A contextual FiveM HUD with a quiet on-foot cluster, a coordinated vehicle + minimap swipe, and an **admin-only** look editor. Built for QBCore, Qbox, and ESX (auto-detected). Players do not get a personal settings menu — admins set the server look once.
+Contextual FiveM HUD for QBCore, Qbox, and ESX (auto-detected). Quiet on foot, coordinated vehicle + minimap swipe, and an **admin-only** look editor — players do not get a personal settings menu.
 
 ## Features
 
-- Status cluster: health, armor, hunger, thirst, and stress when the framework provides it — plus extra pills from other resources (`SetStatus`)
-- Vehicle scene: digital, minimal, analog, or circular speedo — plus gear, petrol or electric fuel, engine, and a square or circular minimap
-- Contextual only: voice / radio, stamina, oxygen, weapon name + fire mode, parachute, harness
-- Damage flash when health or engine drops
-- Optional compass + street, and cash / job chips (off by default; hold Left Alt or `/cash` to peek)
-- Optional notification toasts (info / success / warning / error / announce) with client + server exports
-- Optional bottom-center progress bar that stacks above status glyphs when they share that position
-- Admin look editor: colors, icons, visibility, vehicle units
-- Theme saved to `data/theme.json` and KVP, then broadcast to everyone
+- **Status** — health, armor, hunger, thirst, stress (when provided), plus extra pills via `SetStatus`
+- **Vehicle** — digital / minimal / analog / circular speedo, gear, petrol or electric fuel, engine, square or circular minimap
+- **Contextual** — voice / radio, stamina, oxygen, weapon + fire mode, parachute, harness
+- **Extras** — damage flash, optional compass + street, cash / job peek (Left Alt or `/cash`)
+- **Notifications** — info / success / warning / error / announce / item toasts
+- **Progress** — bottom-center bar; stacks above status glyphs when they share that position
+- **Admin look editor** — colors, icons, visibility, vehicle units; saved to `data/theme.json` and broadcast to everyone
+
+## Requirements
+
+- FiveM (cerulean, Lua 5.4)
+- Qbox, QBCore, or ESX Legacy (standalone still shows health / armor)
+- Node 18+ only if you edit the NUI (`html/` is already built)
 
 ## Install
 
@@ -26,15 +30,13 @@ ensure ox_fuel           # or LegacyFuel / cdn-fuel / ps-fuel
 ensure ryn-hud
 ```
 
-3. Grant the look editor (ACE and/or framework groups):
+3. Grant the look editor:
 
 ```cfg
 add_ace group.admin ryn-hud.admin allow
 ```
 
-Framework groups `god`, `admin`, and `superadmin` are also accepted (see `Config.AdminGroups`).
-
-The NUI is already built in `html/`. You do not need Node on the game server.
+Framework groups `god`, `admin`, and `superadmin` are also accepted (`Config.AdminGroups`).
 
 ## In-game
 
@@ -42,38 +44,67 @@ The NUI is already built in `html/`. You do not need Node on the game server.
 | --- | --- |
 | Open look editor | `/hudadmin` |
 | Peek cash / job | Hold **Left Alt**, or `/cash` |
-| Cinematic mode | `/cinematic` (toggles HUD off + letterbox bars) |
+| Cinematic mode | `/cinematic` |
 | Close editor | `Esc` (does not save) |
 
-Save in the editor applies the look to **all players**. Reset restores the shipped Night Glass default.
+**Save** applies the look to all players. **Reset** restores the shipped Night Glass default.
+
+The HUD hides while the pause menu is open and while the screen is faded out.
 
 ## Config
 
-Edit [`config.lua`](config.lua):
+Edit [`config.lua`](config.lua).
 
 | Option | Default | Notes |
 | --- | --- | --- |
 | `Config.Framework` | `'auto'` | `'auto'` \| `'qb'` \| `'qbx'` \| `'esx'` |
-| `Config.AdminCommand` | `'hudadmin'` | Command name |
+| `Config.AdminCommand` | `'hudadmin'` | Look editor command |
 | `Config.AdminAce` | `'ryn-hud.admin'` | ACE permission |
-| `Config.PeekCommand` | `'cash'` | Short identity peek |
+| `Config.PeekCommand` | `'cash'` | Identity peek command |
 | `Config.PeekControl` | `19` | Left Alt |
-| `Config.CinematicCommand` | `'cinematic'` | Toggle cinematic letterbox mode |
-| `Config.CinematicBarHeight` | `11` | Top/bottom bar height (vh) |
-| `Config.MinimapDelayMs` | `80` | Radar waits so it does not pop before the swipe |
+| `Config.CinematicCommand` | `'cinematic'` | Letterbox toggle |
+| `Config.CinematicBarHeight` | `11` | Bar height (vh) |
+| `Config.MinimapDelayMs` | `80` | Radar waits for the vehicle swipe |
 | `Config.SeatbeltSounds` | `true` | Buckle / unbuckle MP3s |
-| `Config.SeatbeltSoundVolume` | `0.45` | 0–1 NUI volume |
-| `Config.ElectricModels` | `{}` | Extra EV/hybrid spawn names or hashes |
-| `Config.Weapons` | `{}` | Custom weapon labels and fire modes |
-| `Config.Notifications` | enabled table | Optional toast stack (position, duration, max visible) |
-| `Config.Progress` | enabled table | Optional bottom-center progress bar |
+| `Config.SeatbeltSoundVolume` | `0.45` | 0–1 |
+| `Config.ElectricModels` | `{}` | Extra EV / hybrid models |
+| `Config.Weapons` | `{}` | Custom weapon labels / fire modes |
+| `Config.Notifications` | table | Toasts — position, duration, sound |
+| `Config.Progress` | table | Progress bar — `enabled`, `cancelControl` |
+| `Config.JGMileage` | `false` | Show jg-vehiclemileage in the vehicle HUD |
+| `Config.Debug` | `false` | Boot / framework prints to F8 |
 
-Fuel is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, or `ps-fuel` when started, otherwise native fuel. Seatbelt uses `LocalPlayer.state.seatbelt` and common toggle events.
+**Fuel** is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, `ps-fuel`, or `Config.FuelProviders`, then native fuel.  
+**Seatbelt** uses `LocalPlayer.state.seatbelt` and `Config.SeatbeltEvents`.  
+**Electric** vehicles use a battery icon (statebag, native EV flag, empty petrol tank, or `Config.ElectricModels`).
 
-Other resources can toggle cinematic mode, hide the HUD, read the current look, or hang extra status pills on the cluster:
+---
+
+## Exports
+
+Safe wrapper for other resources:
 
 ```lua
-exports['ryn-hud']:SetHudVisible(false)
+local HUD = 'ryn-hud'
+
+local function hud()
+    return GetResourceState(HUD) == 'started'
+end
+
+local function Notify(...)
+    if hud() then return exports[HUD]:Notify(...) end
+end
+
+local function Progress(...)
+    if hud() then return exports[HUD]:Progress(...) end
+    return false
+end
+```
+
+### Core
+
+```lua
+exports['ryn-hud']:SetHudVisible(false)   -- death screens, cutscenes, etc.
 exports['ryn-hud']:SetHudVisible(true)
 exports['ryn-hud']:IsHudVisible()
 
@@ -81,122 +112,84 @@ exports['ryn-hud']:SetCinematic(true)
 exports['ryn-hud']:ToggleCinematic()
 exports['ryn-hud']:IsCinematic()
 
-exports['ryn-hud']:GetTheme()
+exports['ryn-hud']:GetTheme()             -- client or server
+```
 
+### Extra status pills
+
+Up to 8 extras. `AddStatus` is an alias of `SetStatus`.
+
+```lua
 exports['ryn-hud']:SetStatus('drunk', {
     value = 40,
-    icon = 'waves',
+    icon = 'waves',       -- see icons below
     color = '#8B6BC8',
 })
-exports['ryn-hud']:SetStatus('drunk', 12)
+exports['ryn-hud']:SetStatus('drunk', 12)  -- value only
 exports['ryn-hud']:RemoveStatus('drunk')
 exports['ryn-hud']:ClearStatuses()
 ```
 
-`AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
+**Icons:** `heart`, `shield`, `utensils`, `droplet`, `activity`, `fuel`, `seatbelt`, `mic`, `wind`, `waves`, `bolt`, `crosshair`, `star`, `parachute`, `info`, `check`, `warning`, `x`, `megaphone`, `package`
 
-The HUD also hides itself while the pause menu is open and while the screen is faded out.
-
-## Exports API
-
-Safe wrapper other resources can copy:
-
-```lua
-local HUD = 'ryn-hud'
-
-local function hudStarted()
-    return GetResourceState(HUD) == 'started'
-end
-
-local function Notify(...)
-    if hudStarted() then return exports[HUD]:Notify(...) end
-end
-
-local function Progress(...)
-    if hudStarted() then return exports[HUD]:Progress(...) end
-    return false
-end
-```
-
-### Notifications (client)
+### Notifications
 
 Aliases: `Notify`, `ShowNotification`, `SendNotification`
 
 | Call | Result |
 | --- | --- |
-| `Notify('Synced')` | info toast, returns id |
+| `Notify('Synced')` | info toast → id |
 | `Notify('Low fuel', 'warning')` | typed toast |
-| `Notify('Denied', 'error', 4000)` | typed + duration ms |
+| `Notify('Denied', 'error', 4000)` | typed + duration (ms) |
 | `Notify({ title, message, type, duration, icon, color })` | full toast |
 | `Announce('Restart soon')` | announce style |
 | `ClearNotifications()` | clear stack |
-| `IsNotificationsEnabled()` | config flag |
-| `GetActiveNotificationCount()` | approximate live count |
 
-Types: `info` · `success` · `warning` · `error` · `announce` · `item`  
+**Types:** `info` · `success` · `warning` · `error` · `announce` · `item`  
 Also accepted: `primary`, `inform`, `warn`, `danger`, `ok`, `pickup`, …
 
-Message keys accepted: `message`, `description`, `text`, `msg`  
-Title keys accepted: `title`, `header`, `caption`, `subject`
-
-### Item pickup (client)
-
-Lightweight single-line toast for inventory feedback. Aliases: `NotifyItem`, `ItemNotify`
-
-```lua
-exports['ryn-hud']:NotifyItem('Lockpick', 2)          -- Received Lockpick ×2
-exports['ryn-hud']:NotifyItem('Lockpick')             -- Received Lockpick
-exports['ryn-hud']:NotifyItem({
-    name = 'Bandage',
-    count = 3,
-    removed = true,          -- Removed Bandage ×3
-})
-exports['ryn-hud']:NotifyItem({
-    name = 'Water',
-    count = 1,
-    icon = 'droplet',
-    duration = 2800,
-})
-```
-
-Server: `exports['ryn-hud']:NotifyItem(source, 'Lockpick', 2)`
-
-Or via generic notify: `Notify({ type = 'item', message = 'Received Lockpick ×2', count = 2 })`
-
-### Notifications (server)
-
-Same names; first argument is the player id (`source`) or `-1` for everyone:
+**Server** — first argument is player id or `-1` for everyone:
 
 ```lua
 exports['ryn-hud']:Notify(source, 'Welcome back', 'info')
-exports['ryn-hud']:Notify(source, {
-    title = 'Bank',
-    message = 'Transfer complete',
-    type = 'success',
-})
 exports['ryn-hud']:Announce(-1, 'City event in 10 minutes')
 exports['ryn-hud']:ClearNotifications(source)
 ```
 
-### Progress (client)
+### Item pickup
 
-Aliases: `Progress`, `ProgressBar`, `progressBar`
+Lightweight single-line toast. Aliases: `NotifyItem`, `ItemNotify`
+
+```lua
+-- Client
+exports['ryn-hud']:NotifyItem('Lockpick', 2)    -- Received Lockpick ×2
+exports['ryn-hud']:NotifyItem('Lockpick')       -- Received Lockpick
+exports['ryn-hud']:NotifyItem({
+    name = 'Bandage',
+    count = 3,
+    removed = true,     -- Removed Bandage ×3
+})
+
+-- Server
+exports['ryn-hud']:NotifyItem(source, 'Lockpick', 2)
+```
+
+### Progress
+
+Always bottom-center. Aliases: `Progress`, `ProgressBar`, `progressBar`
 
 | Call | Result |
 | --- | --- |
-| `Progress({ label, duration, canCancel, icon, color })` | **blocks** until done → `true` / `false` |
-| `Progress('Lockpicking', 5000)` | shorthand timed |
-| `Progress({ label, value = 0 })` | manual mode → `true` immediately |
-| `StartProgress({ ... })` | non-blocking; use `onFinish` |
+| `Progress({ label, duration, canCancel, icon })` | **blocks** until done → `true` / `false` |
+| `Progress('Lockpicking', 5000)` | timed shorthand |
+| `Progress({ label, value = 0 })` | manual → `true` immediately |
+| `StartProgress({ ... })` | non-blocking (`onFinish`) |
 | `UpdateProgress(42)` / `SetProgress(42)` | manual update |
-| `UpdateProgress({ value = 100, label = 'Done' })` | update + label |
-| `CancelProgress()` / `HideProgress()` | cancel → false |
-| `CompleteProgress()` / `FinishProgress()` | force success |
-| `IsProgressActive()` | busy? |
-| `GetProgress()` | `{ id, label, value, ... }` or nil |
+| `CancelProgress()` / `CompleteProgress()` | cancel / force finish |
+| `IsProgressActive()` / `GetProgress()` | state helpers |
 
 ```lua
--- Blocking (recommended for interactions)
+-- Client (blocking — use for interactions)
 if exports['ryn-hud']:Progress({
     label = 'Lockpicking',
     duration = 5000,
@@ -206,34 +199,14 @@ if exports['ryn-hud']:Progress({
     -- finished
 end
 
--- Callback style
-exports['ryn-hud']:Progress({
-    label = 'Searching',
-    duration = 3000,
-    onFinish = function(success) end,
-})
-
--- Non-blocking start
-exports['ryn-hud']:StartProgress({
-    label = 'Hacking',
-    duration = 8000,
-    onFinish = function(ok) end,
-})
-
--- Manual
+-- Client (manual)
 exports['ryn-hud']:Progress({ label = 'Uploading', value = 0 })
 exports['ryn-hud']:UpdateProgress(55)
 exports['ryn-hud']:CompleteProgress()
-```
 
-### Progress (server)
-
-Fire-and-forget only (no completion boolean). First arg is player id or `-1`:
-
-```lua
+-- Server (fire-and-forget — no completion boolean)
 exports['ryn-hud']:Progress(source, { label = 'Searching', duration = 3000 })
 exports['ryn-hud']:CancelProgress(source)
-exports['ryn-hud']:UpdateProgress(source, 40)
 ```
 
 ### Events
@@ -249,9 +222,11 @@ TriggerClientEvent('ryn-hud:client:cancelProgress', source)
 TriggerClientEvent('ryn-hud:client:completeProgress', source)
 ```
 
-## Browser preview
+---
 
-Iterate on the UI without a game client:
+## Development
+
+Browser preview (no game client):
 
 ```bash
 cd web
@@ -259,38 +234,31 @@ npm install
 npm run dev
 ```
 
-Opens [http://localhost:5173](http://localhost:5173) with mock vitals, a fake minimap, and a **Preview** panel. `` ` `` hides the panel.
+Opens [http://localhost:5173](http://localhost:5173). Press `` ` `` to hide the Preview panel.
 
-- Vehicle swipe, speedometer styles, admin editor, sliders, and live speed are mock-only
-- Notification buttons exercise info / success / warning / error / announce toasts
-- Progress buttons exercise timed and manual progress bars
-- Admin **Save** in the browser writes `localStorage`, not the server
+- Vehicle swipe, speedo styles, admin editor, and live speed are mock-only
+- Notification / progress / item buttons exercise the toast and progress APIs
+- Admin **Save** writes `localStorage`, not the server
 
-After UI changes, rebuild for FiveM:
+Rebuild for FiveM:
 
 ```bash
 cd web
 npm run build
 ```
 
-Output goes to `html/`. `npm run preview` serves that production build.
+Output goes to `html/`.
 
-## Project layout
+## Layout
 
 ```
 ryn-hud/
   config.lua
   fxmanifest.lua
   bridge/          QB / Qbox / ESX / standalone
-  client/          status, vehicle, radar, NUI, admin
-  server/          permissions, theme persist, sync
+  client/          status, vehicle, radar, NUI, notify, progress, admin
+  server/          permissions, theme, sync, notify, progress
   data/theme.json  default + last saved look
   web/             Vue 3 + Vite source
   html/            built NUI (what FiveM loads)
 ```
-
-## Requirements
-
-- FiveM (cerulean, Lua 5.4)
-- One of: Qbox, QBCore, or ESX Legacy (standalone still shows health/armor)
-- Node 18+ only if you edit the NUI
