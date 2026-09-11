@@ -75,5 +75,19 @@ Config.Weapons = {
     -- ['WEAPON_BEANBAG'] = { label = 'Beanbag', fireMode = 'Pump' },
 }
 
+-- Optional toast / announcement notifications (exports + net events).
+-- Set enabled = false to no-op Notify / Announce / ClearNotifications.
+Config.Notifications = {
+    enabled = true,
+    position = 'top-right', -- top-left | top-right | bottom-left | bottom-right
+    offsetX = 2.2,
+    offsetY = 2.0,
+    maxVisible = 5,
+    defaultDuration = 5000,
+    maxDuration = 20000,
+    sound = true,
+    soundVolume = 0.4,
+}
+
 -- Print boot/framework info to the F8 console.
 Config.Debug = false

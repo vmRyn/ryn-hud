@@ -25,6 +25,7 @@ client_scripts {
     'client/radar.lua',
     'client/contextual.lua',
     'client/extras.lua',
+    'client/notifications.lua',
     'client/cinematic.lua',
     'client/visibility.lua',
     'client/admin.lua',
@@ -35,6 +36,7 @@ server_scripts {
     'server/permissions.lua',
     'server/theme.lua',
     'server/sync.lua',
+    'server/notifications.lua',
 }
 
 files {

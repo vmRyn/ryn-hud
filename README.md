@@ -9,6 +9,7 @@ A contextual FiveM HUD with a quiet on-foot cluster, a coordinated vehicle + min
 - Contextual only: voice / radio, stamina, oxygen, weapon name + fire mode, parachute, harness
 - Damage flash when health or engine drops
 - Optional compass + street, and cash / job chips (off by default; hold Left Alt or `/cash` to peek)
+- Optional notification toasts (info / success / warning / error / announce) with client + server exports
 - Admin look editor: colors, icons, visibility, vehicle units
 - Theme saved to `data/theme.json` and KVP, then broadcast to everyone
 
@@ -63,10 +64,11 @@ Edit [`config.lua`](config.lua):
 | `Config.SeatbeltSoundVolume` | `0.45` | 0–1 NUI volume |
 | `Config.ElectricModels` | `{}` | Extra EV/hybrid spawn names or hashes |
 | `Config.Weapons` | `{}` | Custom weapon labels and fire modes |
+| `Config.Notifications` | enabled table | Optional toast stack (position, duration, max visible) |
 
 Fuel is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, or `ps-fuel` when started, otherwise native fuel. Seatbelt uses `LocalPlayer.state.seatbelt` and common toggle events.
 
-Other resources can toggle cinematic mode, hide the HUD, read the current look, or hang extra status pills on the cluster:
+Other resources can toggle cinematic mode, hide the HUD, read the current look, hang extra status pills on the cluster, or push notifications:
 
 ```lua
 exports['ryn-hud']:SetHudVisible(false)   -- death screens, minigames, cutscenes
@@ -83,10 +85,39 @@ exports['ryn-hud']:SetStatus('drunk', {    -- extra pill on the status cluster
     value = 40,
     icon = 'waves',                        -- heart, shield, utensils, droplet, activity,
     color = '#8B6BC8',                     -- fuel, seatbelt, mic, wind, waves, bolt, star, parachute
-})
+})                                         -- info, check, warning, x, megaphone
 exports['ryn-hud']:SetStatus('drunk', 12)  -- update value only
 exports['ryn-hud']:RemoveStatus('drunk')
 exports['ryn-hud']:ClearStatuses()
+
+-- Notifications (Config.Notifications.enabled)
+exports['ryn-hud']:Notify('Inventory synced')                 -- string message
+exports['ryn-hud']:Notify('Tank is low', 'warning')           -- message + type
+exports['ryn-hud']:Notify({                                   -- full toast
+    title = 'Bank',
+    message = 'Transfer complete',
+    type = 'success',                     -- info | success | warning | error | announce
+    duration = 5000,                      -- ms
+    icon = 'check',                       -- optional icon name
+})
+exports['ryn-hud']:Announce('City event in 10 minutes')       -- announce-styled toast
+exports['ryn-hud']:ClearNotifications()
+
+-- From server (target player id, or -1 for everyone)
+exports['ryn-hud']:Notify(source, 'Welcome back', 'info')
+exports['ryn-hud']:Announce(-1, {
+    title = 'Announcement',
+    message = 'Restart in 15 minutes.',
+    duration = 8000,
+})
+```
+
+Events mirror the same payloads:
+
+```lua
+TriggerClientEvent('ryn-hud:client:notify', source, { title = 'Keys', message = 'Locked', type = 'info' })
+TriggerClientEvent('ryn-hud:client:announce', -1, 'Server restart soon')
+TriggerClientEvent('ryn-hud:client:clearNotifications', source)
 ```
 
 `AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
@@ -106,6 +137,7 @@ npm run dev
 Opens [http://localhost:5173](http://localhost:5173) with mock vitals, a fake minimap, and a **Preview** panel. `` ` `` hides the panel.
 
 - Vehicle swipe, speedometer styles, admin editor, sliders, and live speed are mock-only
+- Notification buttons exercise info / success / warning / error / announce toasts
 - Admin **Save** in the browser writes `localStorage`, not the server
 
 After UI changes, rebuild for FiveM:

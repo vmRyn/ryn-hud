@@ -104,6 +104,11 @@ local ICON_NAMES = {
     crosshair = true,
     star = true,
     parachute = true,
+    info = true,
+    check = true,
+    warning = true,
+    x = true,
+    megaphone = true,
 }
 
 local BADGE_STYLES = { filled = true, outline = true, duotone = true }

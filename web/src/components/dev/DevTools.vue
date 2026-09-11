@@ -1,8 +1,41 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
-import type { HudState, MinimapShape, SpeedStyle } from '../../types'
+import type { HudNotification, HudState, MinimapShape, NotifyType, SpeedStyle } from '../../types'
 
 const SPEED_STYLES: SpeedStyle[] = ['digitalArc', 'digital', 'minimal', 'analog', 'circular']
+
+const NOTIFY_SAMPLES: Record<NotifyType, Omit<HudNotification, 'id'>> = {
+  info: {
+    title: 'System',
+    message: 'Inventory synced with the server.',
+    type: 'info',
+    duration: 4500,
+  },
+  success: {
+    title: 'Payment received',
+    message: 'You deposited $2,450 into your bank account.',
+    type: 'success',
+    duration: 5000,
+  },
+  warning: {
+    title: 'Fuel low',
+    message: 'Find a station soon — tank is under 15%.',
+    type: 'warning',
+    duration: 5500,
+  },
+  error: {
+    title: 'Access denied',
+    message: 'You do not have keys for this vehicle.',
+    type: 'error',
+    duration: 5000,
+  },
+  announce: {
+    title: 'Announcement',
+    message: 'City event starts in 10 minutes at Legion Square.',
+    type: 'announce',
+    duration: 7000,
+  },
+}
 
 const props = defineProps<{
   state: HudState
@@ -23,6 +56,8 @@ const emit = defineEmits<{
   hudVisible: [visible: boolean]
   speedStyle: [style: SpeedStyle]
   minimapShape: [shape: MinimapShape]
+  notify: [payload: Omit<HudNotification, 'id'> & { id?: string }]
+  clearNotifications: []
 }>()
 
 const open = ref(true)
@@ -207,6 +242,21 @@ function cycleSpeedStyle() {
   if (!props.vehicleScene) enterVehicle(true)
 }
 
+function pushNotify(type: NotifyType) {
+  emit('notify', { ...NOTIFY_SAMPLES[type] })
+}
+
+function pushStack() {
+  ;(Object.keys(NOTIFY_SAMPLES) as NotifyType[]).forEach((type, index) => {
+    window.setTimeout(() => {
+      emit('notify', {
+        ...NOTIFY_SAMPLES[type],
+        duration: 6500,
+      })
+    }, index * 280)
+  })
+}
+
 function toggleLive() {
   live.value = !live.value
   if (timer) {
@@ -259,6 +309,16 @@ onUnmounted(() => {
         <button type="button" @click="emit('scenario', 'healthy')">Healthy</button>
         <button type="button" @click="emit('scenario', 'critical')">Critical</button>
         <button type="button" @click="emit('scenario', 'combat')">Combat</button>
+      </div>
+      <p class="devtools-section">Notifications</p>
+      <div class="row">
+        <button type="button" @click="pushNotify('info')">Info</button>
+        <button type="button" @click="pushNotify('success')">Success</button>
+        <button type="button" @click="pushNotify('warning')">Warning</button>
+        <button type="button" @click="pushNotify('error')">Error</button>
+        <button type="button" @click="pushNotify('announce')">Announce</button>
+        <button type="button" @click="pushStack">Stack all</button>
+        <button type="button" @click="emit('clearNotifications')">Clear</button>
       </div>
       <label>Health {{ state.health }}<input type="range" min="0" max="150" :value="state.health" @input="setVital('health', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Armor {{ state.armor }}<input type="range" min="0" max="100" :value="state.armor" @input="setVital('armor', Number(($event.target as HTMLInputElement).value))" /></label>

@@ -1,6 +1,7 @@
 const SOUNDS: Record<string, string> = {
   seatbeltOn: './sounds/seatbeltOn.mp3',
   seatbeltOff: './sounds/seatbeltOff.mp3',
+  notify: './sounds/notify.wav',
 }
 
 const players = new Map<string, HTMLAudioElement>()

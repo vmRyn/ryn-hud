@@ -323,7 +323,47 @@ export const ICON_NAMES = [
   'crosshair',
   'star',
   'parachute',
+  'info',
+  'check',
+  'warning',
+  'x',
+  'megaphone',
 ] as const
+
+export type NotifyType = 'info' | 'success' | 'warning' | 'error' | 'announce'
+export type NotifyPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+export interface HudNotification {
+  id: string
+  title?: string | null
+  message: string
+  type: NotifyType
+  duration: number
+  icon?: string | null
+  color?: string | null
+}
+
+export interface NotifyConfig {
+  enabled: boolean
+  position: NotifyPosition
+  offsetX: number
+  offsetY: number
+  maxVisible: number
+  sound: boolean
+  soundVolume: number
+}
+
+export const defaultNotifyConfig: NotifyConfig = {
+  enabled: true,
+  position: 'top-right',
+  offsetX: 2.2,
+  offsetY: 2.0,
+  maxVisible: 5,
+  sound: true,
+  soundVolume: 0.4,
+}
+
+export const NOTIFY_TYPES: NotifyType[] = ['info', 'success', 'warning', 'error', 'announce']
 
 const BADGE_STYLES: BadgeStyle[] = ['filled', 'outline', 'duotone']
 const BADGE_LAYOUTS: BadgeLayout[] = ['ring', 'percent', 'fill', 'bars']

@@ -4,10 +4,24 @@ import StatusCluster from './components/StatusCluster.vue'
 import VehicleScene from './components/VehicleScene.vue'
 import CompassBar from './components/CompassBar.vue'
 import IdentityChips from './components/IdentityChips.vue'
+import NotificationStack from './components/NotificationStack.vue'
 import CinematicBars from './components/CinematicBars.vue'
 import AdminPanel from './components/admin/AdminPanel.vue'
 import DevTools from './components/dev/DevTools.vue'
-import { applyThemeVars, defaultState, defaultTheme, mergeTheme, type HudState, type MinimapShape, type SpeedStyle, type Theme } from './types'
+import {
+  applyThemeVars,
+  defaultNotifyConfig,
+  defaultState,
+  defaultTheme,
+  mergeTheme,
+  type HudNotification,
+  type HudState,
+  type MinimapShape,
+  type NotifyConfig,
+  type NotifyType,
+  type SpeedStyle,
+  type Theme,
+} from './types'
 import { isBrowserPreview, nuiPost, setBrowserNuiHandler } from './nui'
 import { THEME_STORAGE_KEY, createMockState, mockScenarios, PREVIEW_BACKGROUND_URL } from './preview'
 import { playHudSound } from './sounds'
@@ -24,6 +38,9 @@ const theme = ref<Theme>(mergeTheme(defaultTheme, {}))
 const state = reactive<HudState>(
   JSON.parse(JSON.stringify(preview ? createMockState() : defaultState)) as HudState,
 )
+const notifyConfig = ref<NotifyConfig>({ ...defaultNotifyConfig })
+const notifications = ref<HudNotification[]>([])
+let notifySeq = 0
 const adminRef = ref<{ sync: (theme: Theme) => void } | null>(null)
 
 applyThemeVars(theme.value)
@@ -49,6 +66,64 @@ const liftStatusForMap = computed(
     theme.value.status.position === 'bottom-left' &&
     mapVisible.value,
 )
+
+const identityPeeking = computed(
+  () => Boolean(state.identity.showMoney || state.identity.showJob),
+)
+
+function pushNotification(raw: Partial<HudNotification> & { message?: string }) {
+  if (!notifyConfig.value.enabled) return
+  const message = String(raw.message || '').trim()
+  if (!message) return
+  notifySeq += 1
+  const id = raw.id || `preview-${Date.now()}-${notifySeq}`
+  const type = (raw.type || 'info') as NotifyType
+  const next: HudNotification = {
+    id,
+    title: raw.title || null,
+    message,
+    type,
+    duration: typeof raw.duration === 'number' ? raw.duration : 5000,
+    icon: raw.icon || null,
+    color: raw.color || null,
+  }
+  notifications.value = [next, ...notifications.value.filter((item) => item.id !== id)].slice(
+    0,
+    Math.max(1, notifyConfig.value.maxVisible + 2),
+  )
+  if (notifyConfig.value.sound !== false) {
+    playHudSound('notify', notifyConfig.value.soundVolume ?? 0.4)
+  }
+}
+
+function dismissNotification(id: string) {
+  notifications.value = notifications.value.filter((item) => item.id !== id)
+}
+
+function clearAllNotifications() {
+  notifications.value = []
+}
+
+function setNotifyConfig(data: Partial<NotifyConfig> | null | undefined) {
+  if (!data || typeof data !== 'object') return
+  notifyConfig.value = {
+    enabled: data.enabled !== false,
+    position:
+      data.position === 'top-left' ||
+      data.position === 'top-right' ||
+      data.position === 'bottom-left' ||
+      data.position === 'bottom-right'
+        ? data.position
+        : notifyConfig.value.position,
+    offsetX: Number.isFinite(Number(data.offsetX)) ? Number(data.offsetX) : notifyConfig.value.offsetX,
+    offsetY: Number.isFinite(Number(data.offsetY)) ? Number(data.offsetY) : notifyConfig.value.offsetY,
+    maxVisible: Math.min(8, Math.max(1, Math.round(Number(data.maxVisible) || notifyConfig.value.maxVisible))),
+    sound: data.sound !== false,
+    soundVolume: Number.isFinite(Number(data.soundVolume))
+      ? Math.min(1, Math.max(0, Number(data.soundVolume)))
+      : notifyConfig.value.soundVolume,
+  }
+}
 
 function patchState(patch: Partial<HudState>) {
   for (const [key, value] of Object.entries(patch)) {
@@ -138,6 +213,18 @@ function onMessage(event: MessageEvent) {
   }
   if (action === 'playSound' && data?.id) {
     playHudSound(String(data.id), typeof data.volume === 'number' ? data.volume : 0.45)
+    return
+  }
+  if (action === 'setNotifyConfig') {
+    setNotifyConfig(data)
+    return
+  }
+  if (action === 'notify') {
+    pushNotification(data || {})
+    return
+  }
+  if (action === 'clearNotifications') {
+    clearAllNotifications()
   }
 }
 
@@ -220,6 +307,13 @@ onUnmounted(() => {
     <div v-show="hudVisible && !cinematic" class="hud-stage">
       <CompassBar :visible="theme.visibility.compass" :state="state" :theme="theme" />
       <IdentityChips :state="state" :theme="theme" />
+      <NotificationStack
+        :items="notifications"
+        :config="notifyConfig"
+        :theme="theme"
+        :shift-for-identity="identityPeeking && theme.identity.position === 'top-right'"
+        @dismiss="dismissNotification"
+      />
       <div
         class="dock"
         :class="[
@@ -255,6 +349,8 @@ onUnmounted(() => {
       @hud-visible="hudVisible = $event"
       @speed-style="setSpeedStyle"
       @minimap-shape="setMinimapShape"
+      @notify="pushNotification"
+      @clear-notifications="clearAllNotifications"
     />
     <button
       v-else-if="preview"

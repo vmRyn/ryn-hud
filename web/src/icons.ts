@@ -1,10 +1,13 @@
 import type { Component } from 'vue'
 import {
+  PhBroadcast,
+  PhCheckCircle,
   PhCrosshair,
   PhDrop,
   PhForkKnife,
   PhGasPump,
   PhHeart,
+  PhInfo,
   PhLightning,
   PhMicrophone,
   PhParachute,
@@ -12,8 +15,10 @@ import {
   PhSeatbelt,
   PhShield,
   PhStar,
+  PhWarningCircle,
   PhWaves,
   PhWind,
+  PhXCircle,
 } from '@phosphor-icons/vue'
 import { ICON_NAMES } from './types'
 
@@ -36,6 +41,11 @@ export const ICON_COMPONENTS: Record<string, Component> = {
   crosshair: PhCrosshair,
   star: PhStar,
   parachute: PhParachute,
+  info: PhInfo,
+  check: PhCheckCircle,
+  warning: PhWarningCircle,
+  x: PhXCircle,
+  megaphone: PhBroadcast,
 }
 
 export function iconComponent(name: string) {

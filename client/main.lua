@@ -69,6 +69,7 @@ end)
 RegisterNUICallback('nuiReady', function(_, cb)
     cb({ ok = true, resource = RESOURCE })
     RynHud.SendNui('setVisible', true)
+    TriggerEvent('ryn-hud:client:nuiReady')
     TriggerServerEvent('ryn-hud:server:requestTheme')
 end)
 
