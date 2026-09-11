@@ -10,6 +10,7 @@ A contextual FiveM HUD with a quiet on-foot cluster, a coordinated vehicle + min
 - Damage flash when health or engine drops
 - Optional compass + street, and cash / job chips (off by default; hold Left Alt or `/cash` to peek)
 - Optional notification toasts (info / success / warning / error / announce) with client + server exports
+- Optional bottom-center progress bar that stacks above status glyphs when they share that position
 - Admin look editor: colors, icons, visibility, vehicle units
 - Theme saved to `data/theme.json` and KVP, then broadcast to everyone
 
@@ -65,10 +66,11 @@ Edit [`config.lua`](config.lua):
 | `Config.ElectricModels` | `{}` | Extra EV/hybrid spawn names or hashes |
 | `Config.Weapons` | `{}` | Custom weapon labels and fire modes |
 | `Config.Notifications` | enabled table | Optional toast stack (position, duration, max visible) |
+| `Config.Progress` | enabled table | Optional bottom-center progress bar |
 
 Fuel is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, or `ps-fuel` when started, otherwise native fuel. Seatbelt uses `LocalPlayer.state.seatbelt` and common toggle events.
 
-Other resources can toggle cinematic mode, hide the HUD, read the current look, hang extra status pills on the cluster, or push notifications:
+Other resources can toggle cinematic mode, hide the HUD, read the current look, hang extra status pills on the cluster, push notifications, or run a progress bar:
 
 ```lua
 exports['ryn-hud']:SetHudVisible(false)   -- death screens, minigames, cutscenes
@@ -110,6 +112,24 @@ exports['ryn-hud']:Announce(-1, {
     message = 'Restart in 15 minutes.',
     duration = 8000,
 })
+
+-- Progress bar (always bottom-center; sits above glyphs when status is bottom-center)
+if exports['ryn-hud']:Progress({
+    label = 'Lockpicking',
+    duration = 5000,
+    canCancel = true,                     -- X cancels when Config.Progress.cancelControl
+    icon = 'bolt',
+}) then
+    -- completed
+else
+    -- cancelled or busy
+end
+
+exports['ryn-hud']:Progress({ label = 'Uploading', value = 0 })  -- manual mode
+exports['ryn-hud']:UpdateProgress(42)
+exports['ryn-hud']:UpdateProgress({ value = 100, label = 'Done' })
+exports['ryn-hud']:CancelProgress()
+exports['ryn-hud']:IsProgressActive()
 ```
 
 Events mirror the same payloads:
@@ -118,6 +138,7 @@ Events mirror the same payloads:
 TriggerClientEvent('ryn-hud:client:notify', source, { title = 'Keys', message = 'Locked', type = 'info' })
 TriggerClientEvent('ryn-hud:client:announce', -1, 'Server restart soon')
 TriggerClientEvent('ryn-hud:client:clearNotifications', source)
+TriggerClientEvent('ryn-hud:client:progress', source, { label = 'Searching', duration = 3000 })
 ```
 
 `AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
@@ -138,6 +159,7 @@ Opens [http://localhost:5173](http://localhost:5173) with mock vitals, a fake mi
 
 - Vehicle swipe, speedometer styles, admin editor, sliders, and live speed are mock-only
 - Notification buttons exercise info / success / warning / error / announce toasts
+- Progress buttons exercise timed and manual progress bars
 - Admin **Save** in the browser writes `localStorage`, not the server
 
 After UI changes, rebuild for FiveM:

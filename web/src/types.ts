@@ -365,6 +365,28 @@ export const defaultNotifyConfig: NotifyConfig = {
 
 export const NOTIFY_TYPES: NotifyType[] = ['info', 'success', 'warning', 'error', 'announce']
 
+export interface ProgressState {
+  active: boolean
+  id: string
+  label: string
+  value: number
+  duration: number | null
+  icon: string | null
+  color: string | null
+  canCancel: boolean
+}
+
+export const idleProgress: ProgressState = {
+  active: false,
+  id: '',
+  label: '',
+  value: 0,
+  duration: null,
+  icon: null,
+  color: null,
+  canCancel: false,
+}
+
 const BADGE_STYLES: BadgeStyle[] = ['filled', 'outline', 'duotone']
 const BADGE_LAYOUTS: BadgeLayout[] = ['ring', 'percent', 'fill', 'bars']
 const BADGE_SHAPES: BadgeShape[] = ['circle', 'rounded']

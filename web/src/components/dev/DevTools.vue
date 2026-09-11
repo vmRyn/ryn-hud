@@ -45,6 +45,7 @@ const props = defineProps<{
   hudVisible: boolean
   speedStyle: SpeedStyle
   minimapShape: MinimapShape
+  progressActive: boolean
 }>()
 
 const emit = defineEmits<{
@@ -58,6 +59,9 @@ const emit = defineEmits<{
   minimapShape: [shape: MinimapShape]
   notify: [payload: Omit<HudNotification, 'id'> & { id?: string }]
   clearNotifications: []
+  progressStart: [payload: { label: string; duration?: number; value?: number; icon?: string; canCancel?: boolean }]
+  progressUpdate: [payload: { value: number; label?: string }]
+  progressCancel: []
 }>()
 
 const open = ref(true)
@@ -257,6 +261,41 @@ function pushStack() {
   })
 }
 
+function startProgressDemo(kind: 'lockpick' | 'search' | 'manual') {
+  if (kind === 'lockpick') {
+    emit('progressStart', {
+      label: 'Lockpicking',
+      duration: 4500,
+      icon: 'bolt',
+      canCancel: true,
+    })
+    return
+  }
+  if (kind === 'search') {
+    emit('progressStart', {
+      label: 'Searching backpack',
+      duration: 3200,
+      icon: 'star',
+    })
+    return
+  }
+  emit('progressStart', {
+    label: 'Uploading data',
+    value: 0,
+    icon: 'activity',
+  })
+  let value = 0
+  const tick = window.setInterval(() => {
+    value += 8
+    if (value >= 100) {
+      window.clearInterval(tick)
+      emit('progressUpdate', { value: 100, label: 'Upload complete' })
+      return
+    }
+    emit('progressUpdate', { value })
+  }, 220)
+}
+
 function toggleLive() {
   live.value = !live.value
   if (timer) {
@@ -319,6 +358,13 @@ onUnmounted(() => {
         <button type="button" @click="pushNotify('announce')">Announce</button>
         <button type="button" @click="pushStack">Stack all</button>
         <button type="button" @click="emit('clearNotifications')">Clear</button>
+      </div>
+      <p class="devtools-section">Progress</p>
+      <div class="row">
+        <button type="button" :class="{ on: progressActive }" @click="startProgressDemo('lockpick')">Lockpick 4.5s</button>
+        <button type="button" @click="startProgressDemo('search')">Search 3.2s</button>
+        <button type="button" @click="startProgressDemo('manual')">Manual upload</button>
+        <button type="button" @click="emit('progressCancel')">Cancel</button>
       </div>
       <label>Health {{ state.health }}<input type="range" min="0" max="150" :value="state.health" @input="setVital('health', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Armor {{ state.armor }}<input type="range" min="0" max="100" :value="state.armor" @input="setVital('armor', Number(($event.target as HTMLInputElement).value))" /></label>

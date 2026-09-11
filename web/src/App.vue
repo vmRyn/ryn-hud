@@ -5,6 +5,7 @@ import VehicleScene from './components/VehicleScene.vue'
 import CompassBar from './components/CompassBar.vue'
 import IdentityChips from './components/IdentityChips.vue'
 import NotificationStack from './components/NotificationStack.vue'
+import ProgressBar from './components/ProgressBar.vue'
 import CinematicBars from './components/CinematicBars.vue'
 import AdminPanel from './components/admin/AdminPanel.vue'
 import DevTools from './components/dev/DevTools.vue'
@@ -13,12 +14,14 @@ import {
   defaultNotifyConfig,
   defaultState,
   defaultTheme,
+  idleProgress,
   mergeTheme,
   type HudNotification,
   type HudState,
   type MinimapShape,
   type NotifyConfig,
   type NotifyType,
+  type ProgressState,
   type SpeedStyle,
   type Theme,
 } from './types'
@@ -41,6 +44,9 @@ const state = reactive<HudState>(
 const notifyConfig = ref<NotifyConfig>({ ...defaultNotifyConfig })
 const notifications = ref<HudNotification[]>([])
 let notifySeq = 0
+const progress = ref<ProgressState>({ ...idleProgress })
+let progressSeq = 0
+let previewProgressTimer: number | null = null
 const adminRef = ref<{ sync: (theme: Theme) => void } | null>(null)
 
 applyThemeVars(theme.value)
@@ -70,6 +76,61 @@ const liftStatusForMap = computed(
 const identityPeeking = computed(
   () => Boolean(state.identity.showMoney || state.identity.showJob),
 )
+
+const statusBottomCenter = computed(() => theme.value.status.position === 'bottom-center')
+
+function clearPreviewProgressTimer() {
+  if (previewProgressTimer) {
+    window.clearTimeout(previewProgressTimer)
+    previewProgressTimer = null
+  }
+}
+
+function hideProgress() {
+  clearPreviewProgressTimer()
+  progress.value = { ...idleProgress }
+}
+
+function showProgress(raw: Partial<ProgressState> & { label?: string; duration?: number | null }) {
+  const label = String(raw.label || 'Please wait…').trim() || 'Please wait…'
+  progressSeq += 1
+  const id = raw.id || `progress-${Date.now()}-${progressSeq}`
+  const duration =
+    typeof raw.duration === 'number' && raw.duration > 0 ? Math.round(raw.duration) : null
+  const value = typeof raw.value === 'number' ? Math.min(100, Math.max(0, raw.value)) : duration ? 0 : 0
+  clearPreviewProgressTimer()
+  progress.value = {
+    active: true,
+    id,
+    label,
+    value,
+    duration,
+    icon: raw.icon || null,
+    color: raw.color || null,
+    canCancel: raw.canCancel === true,
+  }
+  if (preview && duration) {
+    previewProgressTimer = window.setTimeout(() => {
+      hideProgress()
+    }, duration + 80)
+  }
+}
+
+function updateProgress(raw: Partial<ProgressState> & { value?: number; label?: string }) {
+  if (!progress.value.active) return
+  const next = { ...progress.value }
+  if (typeof raw.value === 'number') {
+    next.value = Math.min(100, Math.max(0, raw.value))
+  }
+  if (typeof raw.label === 'string' && raw.label.trim()) {
+    next.label = raw.label.trim()
+  }
+  next.duration = null
+  progress.value = next
+  if (next.value >= 100) {
+    window.setTimeout(() => hideProgress(), 180)
+  }
+}
 
 function pushNotification(raw: Partial<HudNotification> & { message?: string }) {
   if (!notifyConfig.value.enabled) return
@@ -225,6 +286,18 @@ function onMessage(event: MessageEvent) {
   }
   if (action === 'clearNotifications') {
     clearAllNotifications()
+    return
+  }
+  if (action === 'progressShow') {
+    showProgress(data || {})
+    return
+  }
+  if (action === 'progressUpdate') {
+    updateProgress(data || {})
+    return
+  }
+  if (action === 'progressHide') {
+    hideProgress()
   }
 }
 
@@ -298,6 +371,7 @@ onUnmounted(() => {
   window.removeEventListener('message', onMessage)
   window.removeEventListener('keydown', onKey)
   setBrowserNuiHandler(null)
+  clearPreviewProgressTimer()
 })
 </script>
 
@@ -314,13 +388,25 @@ onUnmounted(() => {
         :shift-for-identity="identityPeeking && theme.identity.position === 'top-right'"
         @dismiss="dismissNotification"
       />
+      <div v-if="!statusBottomCenter" class="progress-anchor">
+        <ProgressBar :progress="progress" :theme="theme" />
+      </div>
       <div
         class="dock"
         :class="[
           theme.status.position,
-          { 'is-vehicle': vehicleScene || liftStatusForMap },
+          {
+            'is-vehicle': vehicleScene || liftStatusForMap,
+            'has-progress': statusBottomCenter && progress.active,
+          },
         ]"
       >
+        <ProgressBar
+          v-if="statusBottomCenter"
+          :progress="progress"
+          :theme="theme"
+          stacked
+        />
         <StatusCluster :state="state" :theme="theme" />
       </div>
       <VehicleScene
@@ -341,6 +427,7 @@ onUnmounted(() => {
       :hud-visible="hudVisible"
       :speed-style="theme.vehicle.speedStyle"
       :minimap-shape="theme.vehicle.minimapShape"
+      :progress-active="progress.active"
       @patch="patchState"
       @vehicle="vehicleScene = $event"
       @admin="adminOpen = $event"
@@ -351,6 +438,9 @@ onUnmounted(() => {
       @minimap-shape="setMinimapShape"
       @notify="pushNotification"
       @clear-notifications="clearAllNotifications"
+      @progress-start="showProgress"
+      @progress-update="updateProgress"
+      @progress-cancel="hideProgress"
     />
     <button
       v-else-if="preview"

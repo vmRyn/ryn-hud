@@ -138,6 +138,10 @@ select {
   align-items: center;
 }
 
+.dock.bottom-center.has-progress {
+  gap: 1vh;
+}
+
 .dock.bottom-right {
   right: var(--offset-x);
   bottom: var(--offset-y);
@@ -1331,6 +1335,130 @@ select {
 .notify-move,
 .notify-up-move {
   transition: transform 280ms var(--ease);
+}
+
+.progress-anchor {
+  position: absolute;
+  left: 50%;
+  bottom: var(--offset-y);
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  justify-content: center;
+}
+
+.progress-bar {
+  width: min(34vh, 56vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55vh;
+  pointer-events: none;
+}
+
+.progress-bar.is-stacked {
+  position: relative;
+}
+
+.progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55vh;
+  min-height: 1.4vh;
+  padding: 0 0.15vh;
+}
+
+.progress-icon {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.progress-icon .hud-icon {
+  width: 1.2vh;
+  height: 1.2vh;
+}
+
+.progress-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.15vh;
+  font-weight: 560;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-percent,
+.progress-hint {
+  flex: 0 0 auto;
+  font-size: 1.05vh;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  position: relative;
+  width: 100%;
+  height: 0.55vh;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  backdrop-filter: blur(var(--blur));
+  overflow: hidden;
+}
+
+.progress-fill {
+  --progress-accent: var(--accent);
+  --progress-ms: 4000ms;
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--progress-accent) 78%, white) 0%,
+    var(--progress-accent) 100%
+  );
+  box-shadow: 0 0 0.7vh color-mix(in srgb, var(--progress-accent) 35%, transparent);
+  transition: width 160ms linear;
+}
+
+.progress-fill.is-timed {
+  width: 100%;
+  transition: none;
+  animation: progress-fill-run var(--progress-ms) linear forwards;
+}
+
+@keyframes progress-fill-run {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.progress-panel-enter-active,
+.progress-panel-leave-active {
+  transition:
+    opacity 240ms var(--ease),
+    transform 280ms var(--ease);
+}
+
+.progress-panel-enter-from,
+.progress-panel-leave-to {
+  opacity: 0;
+  transform: translateY(0.55vh);
+}
+
+.progress-bar.is-stacked.progress-panel-enter-from,
+.progress-bar.is-stacked.progress-panel-leave-to {
+  transform: translateY(0.35vh);
 }
 
 .ap {

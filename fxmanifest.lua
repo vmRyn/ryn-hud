@@ -26,6 +26,7 @@ client_scripts {
     'client/contextual.lua',
     'client/extras.lua',
     'client/notifications.lua',
+    'client/progress.lua',
     'client/cinematic.lua',
     'client/visibility.lua',
     'client/admin.lua',

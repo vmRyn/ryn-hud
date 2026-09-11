@@ -89,5 +89,12 @@ Config.Notifications = {
     soundVolume = 0.4,
 }
 
+-- Optional bottom-center progress bar (always centered; stacks above status glyphs
+-- when the status cluster is also bottom-center).
+Config.Progress = {
+    enabled = true,
+    cancelControl = 73, -- INPUT_VEH_DUCK / X — used when canCancel = true
+}
+
 -- Print boot/framework info to the F8 console.
 Config.Debug = false
