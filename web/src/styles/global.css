@@ -497,7 +497,7 @@ select {
 
 .stat.layout-fill .stat-face,
 .stat.layout-ring .stat-face {
-  color: var(--text);
+  color: var(--c);
 }
 
 .stat.layout-bars {
