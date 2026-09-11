@@ -29,4 +29,18 @@ exports('Notify', notify)
 exports('ShowNotification', notify)
 exports('SendNotification', notify)
 exports('Announce', announce)
+exports('NotifyItem', function(target, data, maybeCount, maybeOpts)
+    if target == nil then
+        return false
+    end
+    TriggerClientEvent('ryn-hud:client:notifyItem', target, data, maybeCount, maybeOpts)
+    return true
+end)
+exports('ItemNotify', function(target, data, maybeCount, maybeOpts)
+    if target == nil then
+        return false
+    end
+    TriggerClientEvent('ryn-hud:client:notifyItem', target, data, maybeCount, maybeOpts)
+    return true
+end)
 exports('ClearNotifications', clear)

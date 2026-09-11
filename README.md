@@ -133,11 +133,35 @@ Aliases: `Notify`, `ShowNotification`, `SendNotification`
 | `IsNotificationsEnabled()` | config flag |
 | `GetActiveNotificationCount()` | approximate live count |
 
-Types: `info` · `success` · `warning` · `error` · `announce`  
-Also accepted: `primary`, `inform`, `warn`, `danger`, `ok`, …
+Types: `info` · `success` · `warning` · `error` · `announce` · `item`  
+Also accepted: `primary`, `inform`, `warn`, `danger`, `ok`, `pickup`, …
 
 Message keys accepted: `message`, `description`, `text`, `msg`  
 Title keys accepted: `title`, `header`, `caption`, `subject`
+
+### Item pickup (client)
+
+Lightweight single-line toast for inventory feedback. Aliases: `NotifyItem`, `ItemNotify`
+
+```lua
+exports['ryn-hud']:NotifyItem('Lockpick', 2)          -- Received Lockpick ×2
+exports['ryn-hud']:NotifyItem('Lockpick')             -- Received Lockpick
+exports['ryn-hud']:NotifyItem({
+    name = 'Bandage',
+    count = 3,
+    removed = true,          -- Removed Bandage ×3
+})
+exports['ryn-hud']:NotifyItem({
+    name = 'Water',
+    count = 1,
+    icon = 'droplet',
+    duration = 2800,
+})
+```
+
+Server: `exports['ryn-hud']:NotifyItem(source, 'Lockpick', 2)`
+
+Or via generic notify: `Notify({ type = 'item', message = 'Received Lockpick ×2', count = 2 })`
 
 ### Notifications (server)
 
@@ -217,6 +241,7 @@ exports['ryn-hud']:UpdateProgress(source, 40)
 ```lua
 TriggerClientEvent('ryn-hud:client:notify', source, { title = 'Keys', message = 'Locked', type = 'info' })
 TriggerClientEvent('ryn-hud:client:announce', -1, 'Server restart soon')
+TriggerClientEvent('ryn-hud:client:notifyItem', source, 'Lockpick', 2)
 TriggerClientEvent('ryn-hud:client:clearNotifications', source)
 TriggerClientEvent('ryn-hud:client:progress', source, { label = 'Searching', duration = 3000 })
 TriggerClientEvent('ryn-hud:client:updateProgress', source, 50)

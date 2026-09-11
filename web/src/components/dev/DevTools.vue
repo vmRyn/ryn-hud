@@ -35,6 +35,13 @@ const NOTIFY_SAMPLES: Record<NotifyType, Omit<HudNotification, 'id'>> = {
     type: 'announce',
     duration: 7000,
   },
+  item: {
+    message: 'Received Lockpick ×2',
+    type: 'item',
+    duration: 3200,
+    icon: 'package',
+    count: 2,
+  },
 }
 
 const props = defineProps<{
@@ -246,6 +253,27 @@ function cycleSpeedStyle() {
   if (!props.vehicleScene) enterVehicle(true)
 }
 
+function pushItemNotify(removed = false) {
+  if (removed) {
+    emit('notify', {
+      type: 'item',
+      message: 'Removed Bandage ×3',
+      count: 3,
+      icon: 'package',
+      duration: 3200,
+      color: '#D45B4A',
+    })
+    return
+  }
+  emit('notify', {
+    type: 'item',
+    message: 'Received Lockpick ×2',
+    count: 2,
+    icon: 'package',
+    duration: 3200,
+  })
+}
+
 function pushNotify(type: NotifyType) {
   emit('notify', { ...NOTIFY_SAMPLES[type] })
 }
@@ -356,6 +384,8 @@ onUnmounted(() => {
         <button type="button" @click="pushNotify('warning')">Warning</button>
         <button type="button" @click="pushNotify('error')">Error</button>
         <button type="button" @click="pushNotify('announce')">Announce</button>
+        <button type="button" @click="pushItemNotify(false)">Item +</button>
+        <button type="button" @click="pushItemNotify(true)">Item −</button>
         <button type="button" @click="pushStack">Stack all</button>
         <button type="button" @click="emit('clearNotifications')">Clear</button>
       </div>

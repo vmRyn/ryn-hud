@@ -10,6 +10,7 @@ import {
   PhInfo,
   PhLightning,
   PhMicrophone,
+  PhPackage,
   PhParachute,
   PhPulse,
   PhSeatbelt,
@@ -46,6 +47,7 @@ export const ICON_COMPONENTS: Record<string, Component> = {
   warning: PhWarningCircle,
   x: PhXCircle,
   megaphone: PhBroadcast,
+  package: PhPackage,
 }
 
 export function iconComponent(name: string) {

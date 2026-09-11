@@ -84,6 +84,7 @@ Config.Notifications = {
     offsetY = 2.0,
     maxVisible = 5,
     defaultDuration = 5000,
+    itemDuration = 3200, -- lighter item pickup toasts
     maxDuration = 20000,
     sound = true,
     soundVolume = 0.4,

@@ -109,6 +109,7 @@ local ICON_NAMES = {
     warning = true,
     x = true,
     megaphone = true,
+    package = true,
 }
 
 local BADGE_STYLES = { filled = true, outline = true, duotone = true }

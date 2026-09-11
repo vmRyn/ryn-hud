@@ -328,9 +328,10 @@ export const ICON_NAMES = [
   'warning',
   'x',
   'megaphone',
+  'package',
 ] as const
 
-export type NotifyType = 'info' | 'success' | 'warning' | 'error' | 'announce'
+export type NotifyType = 'info' | 'success' | 'warning' | 'error' | 'announce' | 'item'
 export type NotifyPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 export interface HudNotification {
@@ -341,6 +342,7 @@ export interface HudNotification {
   duration: number
   icon?: string | null
   color?: string | null
+  count?: number | null
 }
 
 export interface NotifyConfig {
@@ -363,7 +365,7 @@ export const defaultNotifyConfig: NotifyConfig = {
   soundVolume: 0.4,
 }
 
-export const NOTIFY_TYPES: NotifyType[] = ['info', 'success', 'warning', 'error', 'announce']
+export const NOTIFY_TYPES: NotifyType[] = ['info', 'success', 'warning', 'error', 'announce', 'item']
 
 export interface ProgressState {
   active: boolean

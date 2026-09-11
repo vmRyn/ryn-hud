@@ -7,6 +7,7 @@ local TYPES = {
     warning = true,
     error = true,
     announce = true,
+    item = true,
 }
 
 local TYPE_ALIASES = {
@@ -24,6 +25,10 @@ local TYPE_ALIASES = {
     fail = 'error',
     announce = 'announce',
     announcement = 'announce',
+    item = 'item',
+    pickup = 'item',
+    inventory = 'item',
+    received = 'item',
 }
 
 local POSITIONS = {
@@ -142,6 +147,9 @@ local function showNotification(data, maybeType, maybeDuration)
     local nType = sanitizeType(opts.type or opts.level or opts.style or 'info')
     local c = cfg()
     local defaultDuration = tonumber(c.defaultDuration) or 5000
+    if nType == 'item' then
+        defaultDuration = tonumber(c.itemDuration) or 3200
+    end
     local maxDuration = tonumber(c.maxDuration) or 20000
     local duration = tonumber(opts.duration) or defaultDuration
     duration = math.floor(RynHud.Clamp(duration, 1200, maxDuration))
@@ -150,8 +158,18 @@ local function showNotification(data, maybeType, maybeDuration)
     if icon and not (RynHud.IsAllowedIcon and RynHud.IsAllowedIcon(icon)) then
         icon = nil
     end
+    if not icon and nType == 'item' then
+        icon = 'package'
+    end
 
     local color = RynHud.SanitizeColor and RynHud.SanitizeColor(opts.color, nil) or nil
+    local count = tonumber(opts.count or opts.amount or opts.qty)
+    if count then
+        count = math.floor(RynHud.Clamp(count, -9999, 9999))
+        if count == 0 then
+            count = nil
+        end
+    end
 
     seq = seq + 1
     active = active + 1
@@ -165,6 +183,7 @@ local function showNotification(data, maybeType, maybeDuration)
         duration = duration,
         icon = icon,
         color = color,
+        count = count,
     })
 
     SetTimeout(duration + 400, function()
@@ -205,6 +224,78 @@ local function announce(data, maybeDuration)
     return false
 end
 
+--- Lightweight item pickup / remove feedback.
+--- NotifyItem('Lockpick', 2)                 → "Received Lockpick ×2"
+--- NotifyItem('Lockpick')                    → "Received Lockpick"
+--- NotifyItem({ name = 'Lockpick', count = 2, removed = true })
+--- NotifyItem({ name = 'Bandage', count = 3, icon = 'heart' })
+---@return string|false id
+local function notifyItem(data, maybeCount, maybeOpts)
+    if not enabled() then
+        return false
+    end
+
+    local opts = {}
+    if type(data) == 'string' then
+        opts.name = data
+        if type(maybeCount) == 'number' then
+            opts.count = maybeCount
+        elseif type(maybeCount) == 'table' then
+            for k, v in pairs(maybeCount) do
+                opts[k] = v
+            end
+            opts.name = data
+        end
+        if type(maybeOpts) == 'table' then
+            for k, v in pairs(maybeOpts) do
+                opts[k] = v
+            end
+            opts.name = opts.name or data
+        end
+    elseif type(data) == 'table' then
+        opts = data
+    else
+        return false
+    end
+
+    local name = sanitizeText(opts.name or opts.item or opts.label or opts.message, 48)
+    if not name then
+        return false
+    end
+
+    local count = tonumber(opts.count or opts.amount or opts.qty)
+    if type(maybeCount) == 'number' and opts.count == nil then
+        count = maybeCount
+    end
+    if count then
+        count = math.floor(count)
+    end
+
+    local removed = opts.removed == true or opts.action == 'removed' or opts.action == 'remove' or opts.lose == true
+    local verb = sanitizeText(opts.verb, 24)
+    if not verb then
+        verb = removed and 'Removed' or 'Received'
+    end
+
+    local message = opts.message or opts.text
+    if type(message) ~= 'string' or message == '' then
+        if count and math.abs(count) ~= 1 then
+            message = ('%s %s ×%d'):format(verb, name, math.abs(count))
+        else
+            message = ('%s %s'):format(verb, name)
+        end
+    end
+
+    return showNotification({
+        type = 'item',
+        message = message,
+        count = count,
+        icon = opts.icon,
+        color = opts.color,
+        duration = opts.duration,
+    })
+end
+
 local function isNotificationsEnabled()
     return enabled()
 end
@@ -214,6 +305,7 @@ local function getActiveNotificationCount()
 end
 
 RynHud.ShowNotification = showNotification
+RynHud.NotifyItem = notifyItem
 RynHud.ClearNotifications = clearNotifications
 RynHud.PushNotifyConfig = pushConfig
 
@@ -221,6 +313,8 @@ exports('Notify', showNotification)
 exports('ShowNotification', showNotification)
 exports('SendNotification', showNotification)
 exports('Announce', announce)
+exports('NotifyItem', notifyItem)
+exports('ItemNotify', notifyItem)
 exports('ClearNotifications', clearNotifications)
 exports('IsNotificationsEnabled', isNotificationsEnabled)
 exports('GetActiveNotificationCount', getActiveNotificationCount)
@@ -231,6 +325,10 @@ end)
 
 RegisterNetEvent('ryn-hud:client:announce', function(data, maybeDuration)
     announce(data, maybeDuration)
+end)
+
+RegisterNetEvent('ryn-hud:client:notifyItem', function(data, maybeCount, maybeOpts)
+    notifyItem(data, maybeCount, maybeOpts)
 end)
 
 RegisterNetEvent('ryn-hud:client:clearNotifications', function()

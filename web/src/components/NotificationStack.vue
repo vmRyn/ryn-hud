@@ -22,6 +22,7 @@ const DEFAULT_ICONS: Record<NotifyType, string> = {
   warning: 'warning',
   error: 'x',
   announce: 'megaphone',
+  item: 'package',
 }
 
 const visibleItems = computed(() => props.items.slice(0, Math.max(1, props.config.maxVisible)))
@@ -37,11 +38,18 @@ function iconFor(item: HudNotification) {
 
 function accentFor(item: HudNotification) {
   if (item.color) return item.color
-  if (item.type === 'success') return props.theme.colors.armor
+  if (item.type === 'success' || item.type === 'item') return props.theme.colors.armor
   if (item.type === 'warning') return props.theme.warning
   if (item.type === 'error') return props.theme.critical
   if (item.type === 'announce') return props.theme.accent
   return props.theme.accent
+}
+
+function countLabel(item: HudNotification) {
+  if (item.count == null || !Number.isFinite(item.count)) return null
+  const abs = Math.abs(Math.round(item.count))
+  if (abs <= 1) return null
+  return `×${abs}`
 }
 
 function schedule(item: HudNotification) {
@@ -102,8 +110,16 @@ onUnmounted(() => {
           <HudIcon :name="iconFor(item)" badge-style="filled" />
         </span>
         <div class="notify-body">
-          <strong v-if="item.title" class="notify-title">{{ item.title }}</strong>
-          <p class="notify-message">{{ item.message }}</p>
+          <template v-if="item.type === 'item'">
+            <p class="notify-message notify-item-line">
+              <span>{{ item.message }}</span>
+              <b v-if="countLabel(item) && !item.message.includes('×')" class="notify-count">{{ countLabel(item) }}</b>
+            </p>
+          </template>
+          <template v-else>
+            <strong v-if="item.title" class="notify-title">{{ item.title }}</strong>
+            <p class="notify-message">{{ item.message }}</p>
+          </template>
         </div>
       </article>
     </TransitionGroup>

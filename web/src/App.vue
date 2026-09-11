@@ -144,9 +144,10 @@ function pushNotification(raw: Partial<HudNotification> & { message?: string }) 
     title: raw.title || null,
     message,
     type,
-    duration: typeof raw.duration === 'number' ? raw.duration : 5000,
+    duration: typeof raw.duration === 'number' ? raw.duration : type === 'item' ? 3200 : 5000,
     icon: raw.icon || null,
     color: raw.color || null,
+    count: typeof raw.count === 'number' ? raw.count : null,
   }
   notifications.value = [next, ...notifications.value.filter((item) => item.id !== id)].slice(
     0,
