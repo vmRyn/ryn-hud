@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
+import { PhCarProfile, PhCirclesThree, PhEye, PhMapPinArea, PhShapes } from '@phosphor-icons/vue'
 import { defaultTheme, mergeTheme, type BadgeLayout, type HudAnchor, type SpeedStyle, type StatusPosition, type Theme } from '../../types'
 import { ICON_OPTIONS } from '../../icons'
 import { parseColor, toRgba } from '../../themeColor'
@@ -15,9 +16,36 @@ const emit = defineEmits<{
   preview: [theme: Theme]
 }>()
 
-const tab = ref<'layout' | 'badges' | 'icons' | 'visibility' | 'vehicle'>('layout')
+type AdminTab = 'layout' | 'badges' | 'icons' | 'visibility' | 'vehicle'
+
+const tab = ref<AdminTab>('layout')
 const draft = ref<Theme>(mergeTheme(defaultTheme, props.theme))
+const committed = ref(JSON.stringify(draft.value))
 const saved = ref(false)
+const resetArmed = ref(false)
+const mainEl = ref<HTMLElement | null>(null)
+
+let savedTimer: number | null = null
+let resetTimer: number | null = null
+
+const dirty = computed(() => JSON.stringify(draft.value) !== committed.value)
+const vehicleDetailsEnabled = computed(() => draft.value.vehicle.speedStyle !== 'minimal')
+
+const tabIcons = {
+  layout: PhMapPinArea,
+  badges: PhCirclesThree,
+  icons: PhShapes,
+  visibility: PhEye,
+  vehicle: PhCarProfile,
+} as const
+
+const tabs: { id: AdminTab; label: string }[] = [
+  { id: 'layout', label: 'Place' },
+  { id: 'badges', label: 'Badges' },
+  { id: 'icons', label: 'Icons' },
+  { id: 'visibility', label: 'Show' },
+  { id: 'vehicle', label: 'Vehicle' },
+]
 
 const layouts: { id: BadgeLayout; label: string }[] = [
   { id: 'ring', label: 'Circle' },
@@ -97,8 +125,24 @@ const speedStyles: { id: SpeedStyle; label: string; hint: string }[] = [
   { id: 'circular', label: 'Circular', hint: 'Ring gauge with speed in the center' },
 ]
 
+function clearTimers() {
+  if (savedTimer) {
+    window.clearTimeout(savedTimer)
+    savedTimer = null
+  }
+  if (resetTimer) {
+    window.clearTimeout(resetTimer)
+    resetTimer = null
+  }
+}
+
 function sameHex(a: string, b: string) {
   return a.replace('#', '').toLowerCase() === b.replace('#', '').toLowerCase()
+}
+
+function setTab(next: AdminTab) {
+  tab.value = next
+  mainEl.value?.scrollTo({ top: 0 })
 }
 
 function update<K extends keyof Theme>(key: K, value: Theme[K]) {
@@ -144,17 +188,36 @@ function setStatColor(key: keyof Theme['colors'], value: string) {
 }
 
 function save() {
+  if (!dirty.value) return
   const theme = mergeTheme(defaultTheme, draft.value)
   draft.value = theme
+  committed.value = JSON.stringify(theme)
   emit('preview', theme)
   nuiPost('saveTheme', { theme })
   saved.value = true
-  window.setTimeout(() => {
+  resetArmed.value = false
+  if (savedTimer) window.clearTimeout(savedTimer)
+  savedTimer = window.setTimeout(() => {
     saved.value = false
+    savedTimer = null
   }, 1600)
 }
 
 function reset() {
+  if (!resetArmed.value) {
+    resetArmed.value = true
+    if (resetTimer) window.clearTimeout(resetTimer)
+    resetTimer = window.setTimeout(() => {
+      resetArmed.value = false
+      resetTimer = null
+    }, 3500)
+    return
+  }
+  if (resetTimer) {
+    window.clearTimeout(resetTimer)
+    resetTimer = null
+  }
+  resetArmed.value = false
   nuiPost('resetTheme')
 }
 
@@ -162,33 +225,46 @@ function close() {
   nuiPost('closeAdmin')
 }
 
+onUnmounted(clearTimers)
+
 defineExpose({
   sync(theme: Theme) {
-    draft.value = mergeTheme(defaultTheme, theme)
+    const next = mergeTheme(defaultTheme, theme)
+    draft.value = next
+    committed.value = JSON.stringify(next)
+    saved.value = false
+    resetArmed.value = false
   },
 })
 </script>
 
 <template>
-  <section class="ap">
+  <section class="ap" :class="{ 'is-dirty': dirty }">
     <header class="ap-head">
       <div>
         <h1>Look editor</h1>
-        <p>Server-wide · live preview on the HUD</p>
+        <p>{{ dirty ? 'Unsaved preview · Esc discards' : 'Server-wide · live preview on the HUD' }}</p>
       </div>
       <button class="ap-x" type="button" @click="close">Close</button>
     </header>
 
     <div class="ap-shell">
-      <nav class="ap-nav">
-        <button type="button" :class="{ on: tab === 'layout' }" @click="tab = 'layout'">Place</button>
-        <button type="button" :class="{ on: tab === 'badges' }" @click="tab = 'badges'">Badges</button>
-        <button type="button" :class="{ on: tab === 'icons' }" @click="tab = 'icons'">Icons</button>
-        <button type="button" :class="{ on: tab === 'visibility' }" @click="tab = 'visibility'">Show</button>
-        <button type="button" :class="{ on: tab === 'vehicle' }" @click="tab = 'vehicle'">Vehicle</button>
+      <nav class="ap-nav" role="tablist" aria-label="Look editor sections">
+        <button
+          v-for="item in tabs"
+          :key="item.id"
+          type="button"
+          role="tab"
+          :aria-selected="tab === item.id"
+          :class="{ on: tab === item.id }"
+          @click="setTab(item.id)"
+        >
+          <component :is="tabIcons[item.id]" :size="14" weight="regular" />
+          <span>{{ item.label }}</span>
+        </button>
       </nav>
 
-      <div class="ap-main">
+      <div ref="mainEl" class="ap-main" role="tabpanel">
         <template v-if="tab === 'layout'">
           <section class="ap-section">
             <header class="ap-section-head">
@@ -204,6 +280,8 @@ defineExpose({
                   class="ap-pin"
                   :class="[item.slot, { on: draft.status.position === item.id }]"
                   :title="item.label"
+                  :aria-label="item.label"
+                  :aria-pressed="draft.status.position === item.id"
                   @click="nested('status', 'position', item.id)"
                 />
               </div>
@@ -240,6 +318,8 @@ defineExpose({
                     class="ap-pin"
                     :class="[item.slot, { on: draft.compass.position === item.id }]"
                     :title="item.label"
+                    :aria-label="item.label"
+                    :aria-pressed="draft.compass.position === item.id"
                     @click="nested('compass', 'position', item.id)"
                   />
                 </div>
@@ -281,6 +361,8 @@ defineExpose({
                     class="ap-pin"
                     :class="[item.slot, { on: draft.identity.position === item.id }]"
                     :title="item.label"
+                    :aria-label="item.label"
+                    :aria-pressed="draft.identity.position === item.id"
                     @click="nested('identity', 'position', item.id)"
                   />
                 </div>
@@ -353,7 +435,7 @@ defineExpose({
                       />
                     </span>
                     <span>{{ key === 'surfaceStrong' ? 'Surface strong' : key === 'surface' ? 'Surface' : 'Muted' }}</span>
-                    <b>{{ draft[key] }}</b>
+                    <b>{{ surfaceHex(key).toUpperCase() }}</b>
                   </label>
                   <label class="ap-slider ap-surface-alpha">
                     <span>Opacity <b>{{ surfaceAlpha(key).toFixed(2) }}</b></span>
@@ -669,7 +751,12 @@ defineExpose({
               <p class="ap-hint">Appear only when relevant in-game.</p>
             </header>
             <div class="ap-section-body ap-toggle-stack">
-              <label v-for="item in contextualToggles" :key="item.key" class="ap-toggle">
+              <label
+                v-for="item in contextualToggles"
+                :key="item.key"
+                class="ap-toggle"
+                :class="{ 'is-disabled': item.key === 'voiceModeLabel' && draft.visibility.voice === false }"
+              >
                 <div>
                   <span>{{ item.label }}</span>
                   <small>{{ item.hint }}</small>
@@ -677,6 +764,7 @@ defineExpose({
                 <input
                   type="checkbox"
                   :checked="draft.visibility[item.key] !== false"
+                  :disabled="item.key === 'voiceModeLabel' && draft.visibility.voice === false"
                   @change="nested('visibility', item.key, ($event.target as HTMLInputElement).checked)"
                 />
                 <i />
@@ -736,37 +824,54 @@ defineExpose({
             </div>
           </section>
 
-          <section class="ap-section">
+          <section class="ap-section" :class="{ 'is-muted': !vehicleDetailsEnabled }">
             <header class="ap-section-head">
               <h2>Details</h2>
-              <p class="ap-hint">Extra info shown in the vehicle scene. Hidden on the minimal speedometer.</p>
+              <p class="ap-hint">
+                {{ vehicleDetailsEnabled ? 'Extra info shown in the vehicle scene.' : 'Hidden while the minimal speedometer is selected.' }}
+              </p>
             </header>
             <div class="ap-section-body ap-toggle-stack">
-              <label class="ap-toggle">
+              <label class="ap-toggle" :class="{ 'is-disabled': !vehicleDetailsEnabled }">
                 <div>
                   <span>Gear</span>
                   <small>Current gear next to fuel</small>
                 </div>
-                <input type="checkbox" :checked="draft.vehicle.showGear" @change="nested('vehicle', 'showGear', ($event.target as HTMLInputElement).checked)" />
+                <input
+                  type="checkbox"
+                  :checked="draft.vehicle.showGear"
+                  :disabled="!vehicleDetailsEnabled"
+                  @change="nested('vehicle', 'showGear', ($event.target as HTMLInputElement).checked)"
+                />
                 <i />
               </label>
-              <label class="ap-toggle">
+              <label class="ap-toggle" :class="{ 'is-disabled': !vehicleDetailsEnabled }">
                 <div>
                   <span>Fuel</span>
                   <small>Pump icon and level bar</small>
                 </div>
-                <input type="checkbox" :checked="draft.vehicle.showFuel" @change="nested('vehicle', 'showFuel', ($event.target as HTMLInputElement).checked)" />
+                <input
+                  type="checkbox"
+                  :checked="draft.vehicle.showFuel"
+                  :disabled="!vehicleDetailsEnabled"
+                  @change="nested('vehicle', 'showFuel', ($event.target as HTMLInputElement).checked)"
+                />
                 <i />
               </label>
-              <label class="ap-toggle">
+              <label class="ap-toggle" :class="{ 'is-disabled': !vehicleDetailsEnabled }">
                 <div>
                   <span>Engine</span>
                   <small>Engine health bar</small>
                 </div>
-                <input type="checkbox" :checked="draft.vehicle.showEngine" @change="nested('vehicle', 'showEngine', ($event.target as HTMLInputElement).checked)" />
+                <input
+                  type="checkbox"
+                  :checked="draft.vehicle.showEngine"
+                  :disabled="!vehicleDetailsEnabled"
+                  @change="nested('vehicle', 'showEngine', ($event.target as HTMLInputElement).checked)"
+                />
                 <i />
               </label>
-              <label class="ap-toggle">
+              <label class="ap-toggle" :class="{ 'is-disabled': !vehicleDetailsEnabled }">
                 <div>
                   <span>Cruise control</span>
                   <small>When cruise state is active</small>
@@ -774,6 +879,7 @@ defineExpose({
                 <input
                   type="checkbox"
                   :checked="draft.vehicle.showCruise !== false"
+                  :disabled="!vehicleDetailsEnabled"
                   @change="nested('vehicle', 'showCruise', ($event.target as HTMLInputElement).checked)"
                 />
                 <i />
@@ -785,8 +891,12 @@ defineExpose({
     </div>
 
     <footer class="ap-foot">
-      <button type="button" @click="reset">Reset</button>
-      <button type="button" class="primary" @click="save">{{ saved ? 'Saved' : 'Save for everyone' }}</button>
+      <button type="button" :class="{ danger: resetArmed }" @click="reset">
+        {{ resetArmed ? 'Confirm reset' : 'Reset' }}
+      </button>
+      <button type="button" class="primary" :disabled="!dirty && !saved" @click="save">
+        {{ saved ? 'Saved' : dirty ? 'Save for everyone' : 'Up to date' }}
+      </button>
     </footer>
   </section>
 </template>

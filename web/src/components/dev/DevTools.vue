@@ -53,6 +53,7 @@ const props = defineProps<{
   speedStyle: SpeedStyle
   minimapShape: MinimapShape
   progressActive: boolean
+  seatSwapOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -69,6 +70,7 @@ const emit = defineEmits<{
   progressStart: [payload: { label: string; duration?: number; value?: number; icon?: string; canCancel?: boolean }]
   progressUpdate: [payload: { value: number; label?: string }]
   progressCancel: []
+  seatSwap: []
 }>()
 
 const open = ref(true)
@@ -395,6 +397,7 @@ onUnmounted(() => {
         <button type="button" @click="startProgressDemo('search')">Search 3.2s</button>
         <button type="button" @click="startProgressDemo('manual')">Manual upload</button>
         <button type="button" @click="emit('progressCancel')">Cancel</button>
+        <button type="button" :class="{ on: seatSwapOpen }" @click="emit('seatSwap')" title="Requires vehicle (auto-enters)">Seat swap</button>
       </div>
       <label>Health {{ state.health }}<input type="range" min="0" max="150" :value="state.health" @input="setVital('health', Number(($event.target as HTMLInputElement).value))" /></label>
       <label>Armor {{ state.armor }}<input type="range" min="0" max="100" :value="state.armor" @input="setVital('armor', Number(($event.target as HTMLInputElement).value))" /></label>

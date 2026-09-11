@@ -7,6 +7,9 @@ function RynHud.SetCinematic(active, silent)
     end
 
     RynHud.Cinematic = active
+    if active and RynHud.CloseSeatSwap then
+        RynHud.CloseSeatSwap()
+    end
     RynHud.SendNui('setCinematic', {
         active = active,
         barHeight = Config.CinematicBarHeight or 11,

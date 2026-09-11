@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import StatusCluster from './components/StatusCluster.vue'
 import VehicleScene from './components/VehicleScene.vue'
 import CompassBar from './components/CompassBar.vue'
@@ -7,6 +7,8 @@ import IdentityChips from './components/IdentityChips.vue'
 import NotificationStack from './components/NotificationStack.vue'
 import ProgressBar from './components/ProgressBar.vue'
 import CinematicBars from './components/CinematicBars.vue'
+import SeatSwapPanel from './components/SeatSwapPanel.vue'
+import type { SeatSwapPayload } from './components/SeatSwapPanel.vue'
 import AdminPanel from './components/admin/AdminPanel.vue'
 import DevTools from './components/dev/DevTools.vue'
 import {
@@ -35,6 +37,8 @@ const hudVisible = ref(true)
 const cinematic = ref(false)
 const cinematicBarHeight = ref(11)
 const adminOpen = ref(false)
+const seatSwapOpen = ref(false)
+const seatSwapData = ref<SeatSwapPayload | null>(null)
 const vehicleScene = ref(false)
 const showDevTools = ref(true)
 const theme = ref<Theme>(mergeTheme(defaultTheme, {}))
@@ -199,10 +203,18 @@ function patchState(patch: Partial<HudState>) {
   }
 }
 
-function setTheme(next: Theme | Partial<Theme>) {
+function setTheme(next: Theme | Partial<Theme>, syncAdmin = false) {
   theme.value = mergeTheme(defaultTheme, next as Theme)
   applyThemeVars(theme.value)
-  adminRef.value?.sync(theme.value)
+  if (syncAdmin) {
+    adminRef.value?.sync(theme.value)
+  }
+}
+
+function syncAdminTheme() {
+  nextTick(() => {
+    adminRef.value?.sync(theme.value)
+  })
 }
 
 function setMinimapShape(next: MinimapShape) {
@@ -249,7 +261,19 @@ function onMessage(event: MessageEvent) {
     )
     if (cinematic.value) {
       adminOpen.value = false
+      seatSwapOpen.value = false
+      seatSwapData.value = null
     }
+    return
+  }
+  if (action === 'openSeatSwap') {
+    seatSwapData.value = (data || null) as SeatSwapPayload | null
+    seatSwapOpen.value = true
+    return
+  }
+  if (action === 'closeSeatSwap') {
+    seatSwapOpen.value = false
+    seatSwapData.value = null
     return
   }
   if (action === 'patchState' || action === 'setState') {
@@ -257,7 +281,7 @@ function onMessage(event: MessageEvent) {
     return
   }
   if (action === 'setTheme') {
-    setTheme(data)
+    setTheme(data, true)
     return
   }
   if (action === 'setVehicleScene') {
@@ -265,8 +289,11 @@ function onMessage(event: MessageEvent) {
     return
   }
   if (action === 'openAdmin') {
+    seatSwapOpen.value = false
+    seatSwapData.value = null
     adminOpen.value = true
     if (data?.theme) setTheme(data.theme)
+    syncAdminTheme()
     return
   }
   if (action === 'closeAdmin') {
@@ -303,16 +330,118 @@ function onMessage(event: MessageEvent) {
 }
 
 function onKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && seatSwapOpen.value) {
+    nuiPost('closeSeatSwap')
+    if (preview) {
+      seatSwapOpen.value = false
+    }
+  }
   if (event.key === 'Escape' && adminOpen.value) {
     nuiPost('closeAdmin')
   }
   if (preview && event.key === '`' && !event.repeat) {
     showDevTools.value = !showDevTools.value
   }
+  if (preview && (event.key === 'g' || event.key === 'G') && !event.repeat && !adminOpen.value) {
+    if (seatSwapOpen.value) {
+      seatSwapOpen.value = false
+      return
+    }
+    if (vehicleScene.value && !cinematic.value) {
+      openPreviewSeatSwap()
+    }
+  }
 }
 
+function closeSeatSwapUi() {
+  nuiPost('closeSeatSwap')
+  if (preview) {
+    seatSwapOpen.value = false
+  }
+}
+
+const PREVIEW_SEAT_SWAP_MS = 1500
+let previewSeatSwapTimer: number | null = null
+
+const previewSeatSwapBase: SeatSwapPayload = {
+  seats: [
+    { index: -1, label: 'Driver', occupied: false, current: true, row: 0, col: 0 },
+    { index: 0, label: 'Front', occupied: false, current: false, row: 0, col: 1 },
+    { index: 1, label: 'Rear L', occupied: true, current: false, row: 1, col: 0 },
+    { index: 2, label: 'Rear R', occupied: false, current: false, row: 1, col: 1 },
+  ],
+  seatCount: 4,
+  layout: 'grid',
+  title: 'Change seat',
+  hint: 'Select an empty seat',
+}
+
+function clearPreviewSeatSwapTimer() {
+  if (previewSeatSwapTimer) {
+    window.clearTimeout(previewSeatSwapTimer)
+    previewSeatSwapTimer = null
+  }
+}
+
+function applyPreviewSeat(index: number) {
+  for (const seat of previewSeatSwapBase.seats) {
+    seat.current = seat.index === index
+  }
+}
+
+function selectSeatUi(index: number) {
+  if (!preview) {
+    nuiPost('selectSeat', { index })
+    return
+  }
+
+  if (!vehicleScene.value || !seatSwapOpen.value || !seatSwapData.value) return
+  const seat = seatSwapData.value.seats.find((item) => item.index === index)
+  if (!seat || seat.occupied || seat.current) return
+
+  seatSwapOpen.value = false
+  clearPreviewSeatSwapTimer()
+  showProgress({
+    label: 'Changing seats…',
+    duration: PREVIEW_SEAT_SWAP_MS,
+    icon: 'info',
+    canCancel: true,
+  })
+
+  previewSeatSwapTimer = window.setTimeout(() => {
+    previewSeatSwapTimer = null
+    if (!vehicleScene.value) {
+      hideProgress()
+      return
+    }
+    applyPreviewSeat(index)
+    hideProgress()
+  }, PREVIEW_SEAT_SWAP_MS)
+}
+
+function openPreviewSeatSwap() {
+  if (cinematic.value) return
+  if (!vehicleScene.value) {
+    vehicleScene.value = true
+  }
+  clearPreviewSeatSwapTimer()
+  seatSwapData.value = JSON.parse(JSON.stringify(previewSeatSwapBase)) as SeatSwapPayload
+  seatSwapOpen.value = true
+}
+
+watch(vehicleScene, (active) => {
+  if (active) return
+  if (seatSwapOpen.value) {
+    seatSwapOpen.value = false
+  }
+  if (previewSeatSwapTimer) {
+    clearPreviewSeatSwapTimer()
+    hideProgress()
+  }
+})
+
 function previewTheme(next: Theme) {
-  setTheme(next)
+  setTheme(next, false)
   nuiPost('previewTheme', { theme: next })
 }
 
@@ -339,6 +468,9 @@ function startPreview() {
 
   setBrowserNuiHandler((event, data) => {
     if (event === 'closeAdmin') adminOpen.value = false
+    if (event === 'closeSeatSwap') {
+      seatSwapOpen.value = false
+    }
     if (event === 'previewTheme') {
       const payload = data as { theme?: Theme }
       if (payload?.theme) setTheme(payload.theme)
@@ -373,6 +505,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
   setBrowserNuiHandler(null)
   clearPreviewProgressTimer()
+  clearPreviewSeatSwapTimer()
 })
 </script>
 
@@ -419,6 +552,12 @@ onUnmounted(() => {
       />
     </div>
     <AdminPanel v-if="adminOpen && hudVisible && !cinematic" ref="adminRef" :theme="theme" @preview="previewTheme" />
+    <SeatSwapPanel
+      :open="seatSwapOpen && vehicleScene && !cinematic"
+      :data="seatSwapData"
+      @close="closeSeatSwapUi"
+      @select="selectSeatUi"
+    />
     <DevTools
       v-if="preview && showDevTools"
       :state="state"
@@ -429,6 +568,7 @@ onUnmounted(() => {
       :speed-style="theme.vehicle.speedStyle"
       :minimap-shape="theme.vehicle.minimapShape"
       :progress-active="progress.active"
+      :seat-swap-open="seatSwapOpen"
       @patch="patchState"
       @vehicle="vehicleScene = $event"
       @admin="adminOpen = $event"
@@ -442,6 +582,7 @@ onUnmounted(() => {
       @progress-start="showProgress"
       @progress-update="updateProgress"
       @progress-cancel="hideProgress"
+      @seat-swap="openPreviewSeatSwap"
     />
     <button
       v-else-if="preview"

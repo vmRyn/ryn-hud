@@ -27,6 +27,7 @@ client_scripts {
     'client/extras.lua',
     'client/notifications.lua',
     'client/progress.lua',
+    'client/seatswap.lua',
     'client/cinematic.lua',
     'client/visibility.lua',
     'client/admin.lua',

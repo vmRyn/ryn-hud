@@ -52,6 +52,7 @@ RegisterNetEvent('ryn-hud:server:resetTheme', function()
     end
     local saved = RynHud.ResetTheme()
     TriggerClientEvent('ryn-hud:client:applyTheme', -1, saved)
+    TriggerClientEvent('ryn-hud:client:themeReset', src)
     TriggerClientEvent('ryn-hud:client:openAdmin', src, saved)
 end)
 

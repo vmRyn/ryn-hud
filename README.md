@@ -8,6 +8,7 @@ Contextual FiveM HUD for QBCore, Qbox, and ESX (auto-detected). Quiet on foot, c
 - **Vehicle** — digital / minimal / analog / circular speedo, gear, petrol or electric fuel, engine, square or circular minimap
 - **Contextual** — voice / radio, stamina, oxygen, weapon + fire mode, parachute, harness
 - **Extras** — damage flash, optional compass + street, cash / job peek (Left Alt or `/cash`)
+- **Seat swap** — in-vehicle seat diagram (**G** / `/seatswap`); configurable progress wait before warp
 - **Notifications** — info / success / warning / error / announce / item toasts
 - **Progress** — bottom-center bar; stacks above status glyphs when they share that position
 - **Admin look editor** — colors, icons, visibility, vehicle units; saved to `data/theme.json` and broadcast to everyone
@@ -44,8 +45,9 @@ Framework groups `god`, `admin`, and `superadmin` are also accepted (`Config.Adm
 | --- | --- |
 | Open look editor | `/hudadmin` |
 | Peek cash / job | Hold **Left Alt**, or `/cash` |
+| Change vehicle seat | **G** (rebindable), or `/seatswap` |
 | Cinematic mode | `/cinematic` |
-| Close editor | `Esc` (does not save) |
+| Close editor / seat swap | `Esc` (does not save) |
 
 **Save** applies the look to all players. **Reset** restores the shipped Night Glass default.
 
@@ -71,12 +73,14 @@ Edit [`config.lua`](config.lua).
 | `Config.Weapons` | `{}` | Custom weapon labels / fire modes |
 | `Config.Notifications` | table | Toasts — position, duration, sound |
 | `Config.Progress` | table | Progress bar — `enabled`, `cancelControl` |
+| `Config.SeatSwap` | table | Seat swapper — key, progress wait, speed/belt rules |
 | `Config.JGMileage` | `false` | Show jg-vehiclemileage in the vehicle HUD |
 | `Config.Debug` | `false` | Boot / framework prints to F8 |
 
 **Fuel** is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, `ps-fuel`, or `Config.FuelProviders`, then native fuel.  
 **Seatbelt** uses `LocalPlayer.state.seatbelt` and `Config.SeatbeltEvents`.  
-**Electric** vehicles use a battery icon (statebag, native EV flag, empty petrol tank, or `Config.ElectricModels`).
+**Electric** vehicles use a battery icon (statebag, native EV flag, empty petrol tank, or `Config.ElectricModels`).  
+**Seat swap** opens with `Config.SeatSwap.defaultKey` (default **G**). `progressMs` is the wait before warping; `0` skips the bar. `maxSpeedMph` and `blockWhenSeatbelt` gate opening / selecting.
 
 ---
 
@@ -114,6 +118,17 @@ exports['ryn-hud']:IsCinematic()
 
 exports['ryn-hud']:GetTheme()             -- client or server
 ```
+
+### Seat swap
+
+```lua
+exports['ryn-hud']:OpenSeatSwap()
+exports['ryn-hud']:CloseSeatSwap()
+exports['ryn-hud']:ToggleSeatSwap()
+exports['ryn-hud']:IsSeatSwapOpen()
+```
+
+Configure in `Config.SeatSwap`: `defaultKey` (default `G`), `progressMs` (wait before warp; `0` = instant), `maxSpeedMph`, `blockWhenSeatbelt`, `canCancel`.
 
 ### Extra status pills
 
@@ -256,7 +271,7 @@ ryn-hud/
   config.lua
   fxmanifest.lua
   bridge/          QB / Qbox / ESX / standalone
-  client/          status, vehicle, radar, NUI, notify, progress, admin
+  client/          status, vehicle, radar, NUI, notify, progress, seatswap, admin
   server/          permissions, theme, sync, notify, progress
   data/theme.json  default + last saved look
   web/             Vue 3 + Vite source

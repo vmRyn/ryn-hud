@@ -17,6 +17,9 @@ RegisterCommand(Config.AdminCommand, function()
 end, false)
 
 RegisterNetEvent('ryn-hud:client:openAdmin', function(theme)
+    if RynHud.CloseSeatSwap then
+        RynHud.CloseSeatSwap()
+    end
     if RynHud.Cinematic then
         RynHud.SetCinematic(false, true)
     end
@@ -39,6 +42,10 @@ end)
 
 RegisterNetEvent('ryn-hud:client:themeSaved', function()
     RynHud.Notify('admin_saved')
+end)
+
+RegisterNetEvent('ryn-hud:client:themeReset', function()
+    RynHud.Notify('admin_reset')
 end)
 
 RegisterNUICallback('closeAdmin', function(_, cb)

@@ -278,6 +278,7 @@ RynHud.CancelProgress = cancelProgress
 RynHud.HideProgress = hideProgress
 RynHud.CompleteProgress = completeProgress
 RynHud.IsProgressActive = isProgressActive
+RynHud.IsProgressEnabled = isProgressEnabled
 
 exports('Progress', startProgress)
 exports('ProgressBar', startProgress)

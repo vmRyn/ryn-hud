@@ -97,5 +97,16 @@ Config.Progress = {
     cancelControl = 73, -- INPUT_VEH_DUCK / X — used when canCancel = true
 }
 
+-- In-vehicle seat swapper (key opens a seat diagram; progress runs before the warp).
+Config.SeatSwap = {
+    enabled = true,
+    command = 'seatswap',
+    defaultKey = 'G', -- RegisterKeyMapping; players can rebind in FiveM settings
+    progressMs = 3000, -- wait before swapping (0 = instant, no progress bar)
+    canCancel = true, -- cancel progress with Config.Progress.cancelControl
+    maxSpeedMph = 15, -- 0 = allow at any speed
+    blockWhenSeatbelt = true,
+}
+
 -- Print boot/framework info to the F8 console.
 Config.Debug = false
