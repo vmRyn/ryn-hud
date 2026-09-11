@@ -2,8 +2,8 @@
 
 :root {
   --accent: #007bc7;
-  --surface: rgba(8, 8, 8, 0.42);
-  --surface-strong: rgba(10, 10, 10, 0.92);
+  --surface: rgba(24, 26, 30, 0.30);
+  --surface-strong: rgba(20, 22, 26, 0.55);
   --text: #ffffff;
   --muted: rgba(236, 232, 225, 0.42);
   --warning: #c7924a;

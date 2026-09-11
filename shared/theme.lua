@@ -4,8 +4,9 @@ RynHud.DefaultTheme = {
     schema = 1,
     preset = 'nightGlass',
     accent = '#007BC7',
-    surface = 'rgba(8, 8, 8, 0.42)',
-    surfaceStrong = 'rgba(10, 10, 10, 0.92)',
+    -- FiveM NUI often skips backdrop blur, so keep these lighter/more open than a desktop preview.
+    surface = 'rgba(24, 26, 30, 0.30)',
+    surfaceStrong = 'rgba(20, 22, 26, 0.55)',
     text = '#FFFFFF',
     muted = 'rgba(236, 232, 225, 0.42)',
     warning = '#C7924A',
