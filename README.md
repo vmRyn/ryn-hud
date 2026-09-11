@@ -70,80 +70,159 @@ Edit [`config.lua`](config.lua):
 
 Fuel is read from `ox_fuel`, `LegacyFuel`, `cdn-fuel`, or `ps-fuel` when started, otherwise native fuel. Seatbelt uses `LocalPlayer.state.seatbelt` and common toggle events.
 
-Other resources can toggle cinematic mode, hide the HUD, read the current look, hang extra status pills on the cluster, push notifications, or run a progress bar:
+Other resources can toggle cinematic mode, hide the HUD, read the current look, or hang extra status pills on the cluster:
 
 ```lua
-exports['ryn-hud']:SetHudVisible(false)   -- death screens, minigames, cutscenes
+exports['ryn-hud']:SetHudVisible(false)
 exports['ryn-hud']:SetHudVisible(true)
 exports['ryn-hud']:IsHudVisible()
 
-exports['ryn-hud']:SetCinematic(true)      -- screenshots with letterbox bars
+exports['ryn-hud']:SetCinematic(true)
 exports['ryn-hud']:ToggleCinematic()
 exports['ryn-hud']:IsCinematic()
 
-exports['ryn-hud']:GetTheme()              -- current theme table (client or server)
+exports['ryn-hud']:GetTheme()
 
-exports['ryn-hud']:SetStatus('drunk', {    -- extra pill on the status cluster
+exports['ryn-hud']:SetStatus('drunk', {
     value = 40,
-    icon = 'waves',                        -- heart, shield, utensils, droplet, activity,
-    color = '#8B6BC8',                     -- fuel, seatbelt, mic, wind, waves, bolt, star, parachute
-})                                         -- info, check, warning, x, megaphone
-exports['ryn-hud']:SetStatus('drunk', 12)  -- update value only
+    icon = 'waves',
+    color = '#8B6BC8',
+})
+exports['ryn-hud']:SetStatus('drunk', 12)
 exports['ryn-hud']:RemoveStatus('drunk')
 exports['ryn-hud']:ClearStatuses()
+```
 
--- Notifications (Config.Notifications.enabled)
-exports['ryn-hud']:Notify('Inventory synced')                 -- string message
-exports['ryn-hud']:Notify('Tank is low', 'warning')           -- message + type
-exports['ryn-hud']:Notify({                                   -- full toast
+`AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
+
+The HUD also hides itself while the pause menu is open and while the screen is faded out.
+
+## Exports API
+
+Safe wrapper other resources can copy:
+
+```lua
+local HUD = 'ryn-hud'
+
+local function hudStarted()
+    return GetResourceState(HUD) == 'started'
+end
+
+local function Notify(...)
+    if hudStarted() then return exports[HUD]:Notify(...) end
+end
+
+local function Progress(...)
+    if hudStarted() then return exports[HUD]:Progress(...) end
+    return false
+end
+```
+
+### Notifications (client)
+
+Aliases: `Notify`, `ShowNotification`, `SendNotification`
+
+| Call | Result |
+| --- | --- |
+| `Notify('Synced')` | info toast, returns id |
+| `Notify('Low fuel', 'warning')` | typed toast |
+| `Notify('Denied', 'error', 4000)` | typed + duration ms |
+| `Notify({ title, message, type, duration, icon, color })` | full toast |
+| `Announce('Restart soon')` | announce style |
+| `ClearNotifications()` | clear stack |
+| `IsNotificationsEnabled()` | config flag |
+| `GetActiveNotificationCount()` | approximate live count |
+
+Types: `info` · `success` · `warning` · `error` · `announce`  
+Also accepted: `primary`, `inform`, `warn`, `danger`, `ok`, …
+
+Message keys accepted: `message`, `description`, `text`, `msg`  
+Title keys accepted: `title`, `header`, `caption`, `subject`
+
+### Notifications (server)
+
+Same names; first argument is the player id (`source`) or `-1` for everyone:
+
+```lua
+exports['ryn-hud']:Notify(source, 'Welcome back', 'info')
+exports['ryn-hud']:Notify(source, {
     title = 'Bank',
     message = 'Transfer complete',
-    type = 'success',                     -- info | success | warning | error | announce
-    duration = 5000,                      -- ms
-    icon = 'check',                       -- optional icon name
+    type = 'success',
 })
-exports['ryn-hud']:Announce('City event in 10 minutes')       -- announce-styled toast
-exports['ryn-hud']:ClearNotifications()
+exports['ryn-hud']:Announce(-1, 'City event in 10 minutes')
+exports['ryn-hud']:ClearNotifications(source)
+```
 
--- From server (target player id, or -1 for everyone)
-exports['ryn-hud']:Notify(source, 'Welcome back', 'info')
-exports['ryn-hud']:Announce(-1, {
-    title = 'Announcement',
-    message = 'Restart in 15 minutes.',
-    duration = 8000,
-})
+### Progress (client)
 
--- Progress bar (always bottom-center; sits above glyphs when status is bottom-center)
+Aliases: `Progress`, `ProgressBar`, `progressBar`
+
+| Call | Result |
+| --- | --- |
+| `Progress({ label, duration, canCancel, icon, color })` | **blocks** until done → `true` / `false` |
+| `Progress('Lockpicking', 5000)` | shorthand timed |
+| `Progress({ label, value = 0 })` | manual mode → `true` immediately |
+| `StartProgress({ ... })` | non-blocking; use `onFinish` |
+| `UpdateProgress(42)` / `SetProgress(42)` | manual update |
+| `UpdateProgress({ value = 100, label = 'Done' })` | update + label |
+| `CancelProgress()` / `HideProgress()` | cancel → false |
+| `CompleteProgress()` / `FinishProgress()` | force success |
+| `IsProgressActive()` | busy? |
+| `GetProgress()` | `{ id, label, value, ... }` or nil |
+
+```lua
+-- Blocking (recommended for interactions)
 if exports['ryn-hud']:Progress({
     label = 'Lockpicking',
     duration = 5000,
-    canCancel = true,                     -- X cancels when Config.Progress.cancelControl
+    canCancel = true,
     icon = 'bolt',
 }) then
-    -- completed
-else
-    -- cancelled or busy
+    -- finished
 end
 
-exports['ryn-hud']:Progress({ label = 'Uploading', value = 0 })  -- manual mode
-exports['ryn-hud']:UpdateProgress(42)
-exports['ryn-hud']:UpdateProgress({ value = 100, label = 'Done' })
-exports['ryn-hud']:CancelProgress()
-exports['ryn-hud']:IsProgressActive()
+-- Callback style
+exports['ryn-hud']:Progress({
+    label = 'Searching',
+    duration = 3000,
+    onFinish = function(success) end,
+})
+
+-- Non-blocking start
+exports['ryn-hud']:StartProgress({
+    label = 'Hacking',
+    duration = 8000,
+    onFinish = function(ok) end,
+})
+
+-- Manual
+exports['ryn-hud']:Progress({ label = 'Uploading', value = 0 })
+exports['ryn-hud']:UpdateProgress(55)
+exports['ryn-hud']:CompleteProgress()
 ```
 
-Events mirror the same payloads:
+### Progress (server)
+
+Fire-and-forget only (no completion boolean). First arg is player id or `-1`:
+
+```lua
+exports['ryn-hud']:Progress(source, { label = 'Searching', duration = 3000 })
+exports['ryn-hud']:CancelProgress(source)
+exports['ryn-hud']:UpdateProgress(source, 40)
+```
+
+### Events
 
 ```lua
 TriggerClientEvent('ryn-hud:client:notify', source, { title = 'Keys', message = 'Locked', type = 'info' })
 TriggerClientEvent('ryn-hud:client:announce', -1, 'Server restart soon')
 TriggerClientEvent('ryn-hud:client:clearNotifications', source)
 TriggerClientEvent('ryn-hud:client:progress', source, { label = 'Searching', duration = 3000 })
+TriggerClientEvent('ryn-hud:client:updateProgress', source, 50)
+TriggerClientEvent('ryn-hud:client:cancelProgress', source)
+TriggerClientEvent('ryn-hud:client:completeProgress', source)
 ```
-
-`AddStatus` is an alias of `SetStatus`. Up to 8 extras. Electric / hybrid vehicles show a battery icon instead of a fuel pump (statebag `fuelType` / `electric`, native EV flag, empty petrol tank, or `Config.ElectricModels`).
-
-The HUD also hides itself while the pause menu is open and while the screen is faded out.
 
 ## Browser preview
 

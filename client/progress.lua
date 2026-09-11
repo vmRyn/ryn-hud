@@ -25,6 +25,9 @@ local function resolve(success)
     if job.promise then
         job.promise:resolve(success == true)
     end
+    if type(job.onFinish) == 'function' then
+        job.onFinish(success == true)
+    end
 end
 
 local function hideProgress()
@@ -69,8 +72,8 @@ local function updateProgress(data)
     local value = data
     local label = nil
     if type(data) == 'table' then
-        value = data.value
-        label = sanitizeLabel(data.label or data.name)
+        value = data.value or data.percent or data.progress
+        label = sanitizeLabel(data.label or data.name or data.text)
     end
     value = RynHud.Clamp(tonumber(value) or 0, 0, 100)
     if label then
@@ -88,11 +91,31 @@ local function updateProgress(data)
     return true
 end
 
+local function normalizeOpts(data, maybeDuration)
+    local opts = {}
+    if type(data) == 'string' then
+        opts.label = data
+        if type(maybeDuration) == 'number' then
+            opts.duration = maybeDuration
+        elseif type(maybeDuration) == 'table' then
+            for k, v in pairs(maybeDuration) do
+                opts[k] = v
+            end
+            opts.label = data
+        end
+    elseif type(data) == 'table' then
+        opts = data
+    else
+        return nil
+    end
+    return opts
+end
+
 --- Start a progress bar.
---- Timed:   Progress({ label = 'Lockpicking', duration = 5000, canCancel = true }) → waits, returns bool
---- Manual:  Progress({ label = 'Upload', value = 0 }) → returns true immediately; use UpdateProgress
----@param data table|string
----@param maybeDuration number|nil
+--- Timed (blocks until done): Progress({ label = 'Lockpicking', duration = 5000, canCancel = true }) → boolean
+--- Timed shorthand:          Progress('Lockpicking', 5000)
+--- Manual:                   Progress({ label = 'Upload', value = 0 }) → true; then UpdateProgress
+--- Callback:                 Progress({ ..., onFinish = function(ok) end })
 ---@return boolean
 local function startProgress(data, maybeDuration)
     if not enabled() then
@@ -102,22 +125,17 @@ local function startProgress(data, maybeDuration)
         return false
     end
 
-    local opts = {}
-    if type(data) == 'string' then
-        opts.label = data
-        opts.duration = maybeDuration
-    elseif type(data) == 'table' then
-        opts = data
-    else
+    local opts = normalizeOpts(data, maybeDuration)
+    if not opts then
         return false
     end
 
-    local label = sanitizeLabel(opts.label or opts.name or opts.text) or 'Please wait…'
-    local duration = tonumber(opts.duration)
+    local label = sanitizeLabel(opts.label or opts.name or opts.text or opts.description) or 'Please wait…'
+    local duration = tonumber(opts.duration) or tonumber(opts.time) or tonumber(opts.ms)
     if duration then
         duration = math.floor(RynHud.Clamp(duration, 200, 120000))
     end
-    local value = tonumber(opts.value)
+    local value = tonumber(opts.value) or tonumber(opts.percent) or tonumber(opts.progress)
     if value then
         value = RynHud.Clamp(value, 0, 100)
     elseif not duration then
@@ -129,10 +147,14 @@ local function startProgress(data, maybeDuration)
         icon = nil
     end
     local color = RynHud.SanitizeColor and RynHud.SanitizeColor(opts.color, nil) or nil
-    local canCancel = opts.canCancel == true
+    local canCancel = opts.canCancel == true or opts.cancel == true
     local disable = opts.disable
     if disable == nil then
         disable = true
+    end
+    local onFinish = opts.onFinish or opts.onComplete or opts.cb
+    if type(onFinish) ~= 'function' then
+        onFinish = nil
     end
 
     local id = ('p-%d'):format(GetGameTimer())
@@ -146,6 +168,7 @@ local function startProgress(data, maybeDuration)
         canCancel = canCancel,
         disable = disable,
         promise = p,
+        onFinish = onFinish,
     }
 
     pushProgress({
@@ -197,8 +220,34 @@ local function startProgress(data, maybeDuration)
     return result == true
 end
 
+--- Non-blocking progress. Returns immediately; use onFinish / the returned handle.
+--- StartProgress({ label = 'Hack', duration = 4000, onFinish = function(ok) end })
+---@return boolean started
+local function startProgressAsync(data, maybeDuration)
+    if not enabled() then
+        return false
+    end
+    if active then
+        return false
+    end
+
+    local opts = normalizeOpts(data, maybeDuration)
+    if not opts then
+        return false
+    end
+
+    CreateThread(function()
+        startProgress(opts)
+    end)
+    return true
+end
+
 local function isProgressActive()
     return active ~= nil
+end
+
+local function isProgressEnabled()
+    return enabled()
 end
 
 local function completeProgress()
@@ -209,7 +258,21 @@ local function completeProgress()
     return true
 end
 
+local function getProgress()
+    if not active then
+        return nil
+    end
+    return {
+        id = active.id,
+        label = active.label,
+        value = active.value,
+        duration = active.duration,
+        canCancel = active.canCancel == true,
+    }
+end
+
 RynHud.Progress = startProgress
+RynHud.StartProgress = startProgressAsync
 RynHud.UpdateProgress = updateProgress
 RynHud.CancelProgress = cancelProgress
 RynHud.HideProgress = hideProgress
@@ -217,14 +280,23 @@ RynHud.CompleteProgress = completeProgress
 RynHud.IsProgressActive = isProgressActive
 
 exports('Progress', startProgress)
+exports('ProgressBar', startProgress)
+exports('progressBar', startProgress)
+exports('StartProgress', startProgressAsync)
 exports('UpdateProgress', updateProgress)
+exports('SetProgress', updateProgress)
 exports('CancelProgress', cancelProgress)
 exports('HideProgress', hideProgress)
 exports('CompleteProgress', completeProgress)
+exports('FinishProgress', completeProgress)
 exports('IsProgressActive', isProgressActive)
+exports('IsProgressEnabled', isProgressEnabled)
+exports('GetProgress', getProgress)
 
 RegisterNetEvent('ryn-hud:client:progress', function(data, maybeDuration)
-    startProgress(data, maybeDuration)
+    CreateThread(function()
+        startProgress(data, maybeDuration)
+    end)
 end)
 
 RegisterNetEvent('ryn-hud:client:updateProgress', function(data)
@@ -233,6 +305,10 @@ end)
 
 RegisterNetEvent('ryn-hud:client:cancelProgress', function()
     cancelProgress()
+end)
+
+RegisterNetEvent('ryn-hud:client:completeProgress', function()
+    completeProgress()
 end)
 
 AddEventHandler('onResourceStop', function(resource)

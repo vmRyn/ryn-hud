@@ -38,6 +38,7 @@ server_scripts {
     'server/theme.lua',
     'server/sync.lua',
     'server/notifications.lua',
+    'server/progress.lua',
 }
 
 files {

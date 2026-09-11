@@ -9,6 +9,23 @@ local TYPES = {
     announce = true,
 }
 
+local TYPE_ALIASES = {
+    info = 'info',
+    inform = 'info',
+    information = 'info',
+    primary = 'info',
+    success = 'success',
+    ok = 'success',
+    warning = 'warning',
+    warn = 'warning',
+    error = 'error',
+    danger = 'error',
+    destructive = 'error',
+    fail = 'error',
+    announce = 'announce',
+    announcement = 'announce',
+}
+
 local POSITIONS = {
     ['top-left'] = true,
     ['top-right'] = true,
@@ -27,6 +44,8 @@ local function cfg()
             maxVisible = 5,
             defaultDuration = 5000,
             maxDuration = 20000,
+            sound = true,
+            soundVolume = 0.4,
         }
     end
     return c
@@ -54,8 +73,13 @@ local function pushConfig()
 end
 
 local function sanitizeType(value)
-    if type(value) == 'string' and TYPES[value:lower()] then
-        return value:lower()
+    if type(value) ~= 'string' then
+        return 'info'
+    end
+    local key = value:lower():gsub('%s+', '')
+    local mapped = TYPE_ALIASES[key]
+    if mapped and TYPES[mapped] then
+        return mapped
     end
     return 'info'
 end
@@ -74,6 +98,13 @@ local function sanitizeText(value, maxLen)
     return value
 end
 
+--- Show a toast notification.
+--- Notify('message')
+--- Notify('message', 'success')
+--- Notify('message', 'warning', 6000)
+--- Notify('message', { type = 'error', title = 'Denied', duration = 4000 })
+--- Notify({ title = 'Bank', message = 'Paid', type = 'success', icon = 'check', color = '#4CB8A8' })
+---@return string|false id
 local function showNotification(data, maybeType, maybeDuration)
     if not enabled() then
         return false
@@ -85,7 +116,9 @@ local function showNotification(data, maybeType, maybeDuration)
         if type(maybeType) == 'string' then
             opts.type = maybeType
         elseif type(maybeType) == 'table' then
-            opts = maybeType
+            for k, v in pairs(maybeType) do
+                opts[k] = v
+            end
             opts.message = data
         end
         if type(maybeDuration) == 'number' then
@@ -97,13 +130,16 @@ local function showNotification(data, maybeType, maybeDuration)
         return false
     end
 
-    local message = sanitizeText(opts.message or opts.description or opts.text, 220)
+    local message = sanitizeText(
+        opts.message or opts.description or opts.text or opts.msg,
+        220
+    )
     if not message then
         return false
     end
 
-    local title = sanitizeText(opts.title or opts.header, 48)
-    local nType = sanitizeType(opts.type or opts.level or 'info')
+    local title = sanitizeText(opts.title or opts.header or opts.caption or opts.subject, 48)
+    local nType = sanitizeType(opts.type or opts.level or opts.style or 'info')
     local c = cfg()
     local defaultDuration = tonumber(c.defaultDuration) or 5000
     local maxDuration = tonumber(c.maxDuration) or 20000
@@ -147,6 +183,8 @@ local function clearNotifications()
     return true
 end
 
+--- Announce-styled toast (title defaults to Announcement).
+---@return string|false id
 local function announce(data, maybeDuration)
     if type(data) == 'string' then
         return showNotification({
@@ -157,14 +195,22 @@ local function announce(data, maybeDuration)
         })
     end
     if type(data) == 'table' then
-        data = RynHud.DeepCopy(data) or data
-        data.type = 'announce'
-        if not data.title then
-            data.title = 'Announcement'
+        local copy = RynHud.DeepCopy(data) or {}
+        copy.type = 'announce'
+        if not copy.title and not copy.header and not copy.caption then
+            copy.title = 'Announcement'
         end
-        return showNotification(data)
+        return showNotification(copy)
     end
     return false
+end
+
+local function isNotificationsEnabled()
+    return enabled()
+end
+
+local function getActiveNotificationCount()
+    return active
 end
 
 RynHud.ShowNotification = showNotification
@@ -172,8 +218,12 @@ RynHud.ClearNotifications = clearNotifications
 RynHud.PushNotifyConfig = pushConfig
 
 exports('Notify', showNotification)
+exports('ShowNotification', showNotification)
+exports('SendNotification', showNotification)
 exports('Announce', announce)
 exports('ClearNotifications', clearNotifications)
+exports('IsNotificationsEnabled', isNotificationsEnabled)
+exports('GetActiveNotificationCount', getActiveNotificationCount)
 
 RegisterNetEvent('ryn-hud:client:notify', function(data, maybeType, maybeDuration)
     showNotification(data, maybeType, maybeDuration)

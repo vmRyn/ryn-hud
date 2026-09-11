@@ -1,4 +1,4 @@
---- Server helpers to push HUD toasts to one player or everyone.
+--- Server helpers for HUD toasts.
 --- Prefer client exports when you already run on the client.
 
 local function notify(target, data, maybeType, maybeDuration)
@@ -26,5 +26,7 @@ local function clear(target)
 end
 
 exports('Notify', notify)
+exports('ShowNotification', notify)
+exports('SendNotification', notify)
 exports('Announce', announce)
 exports('ClearNotifications', clear)
