@@ -2,6 +2,17 @@ local function resourceStarted(name)
     return GetResourceState(name) == 'started'
 end
 
+local BUILTIN_FUEL_PROVIDERS = {
+    { resource = 'ox_fuel', type = 'state', key = 'fuel' },
+    { resource = 'LegacyFuel', export = 'GetFuel' },
+    { resource = 'cdn-fuel', export = 'GetFuel' },
+    { resource = 'ps-fuel', export = 'GetFuel' },
+}
+
+-- Resolved once every few seconds so GetResourceState isn't hit every vehicle tick.
+local cachedFuelProvider = nil
+local fuelProviderUntil = 0
+
 local function getFuelFromProvider(vehicle, provider)
     if provider.type == 'state' then
         local ok, state = pcall(function()
@@ -30,21 +41,18 @@ local function getFuelFromProvider(vehicle, provider)
     return nil
 end
 
-local function getFuel(vehicle)
-    local providers = {
-        { resource = 'ox_fuel', type = 'state', key = 'fuel' },
-        { resource = 'LegacyFuel', export = 'GetFuel' },
-        { resource = 'cdn-fuel', export = 'GetFuel' },
-        { resource = 'ps-fuel', export = 'GetFuel' },
-    }
+local function resolveFuelProvider()
+    local now = GetGameTimer()
+    if now < fuelProviderUntil then
+        return cachedFuelProvider
+    end
+    fuelProviderUntil = now + 2500
 
-    for i = 1, #providers do
-        local provider = providers[i]
+    for i = 1, #BUILTIN_FUEL_PROVIDERS do
+        local provider = BUILTIN_FUEL_PROVIDERS[i]
         if resourceStarted(provider.resource) then
-            local fuel = getFuelFromProvider(vehicle, provider)
-            if fuel ~= nil then
-                return fuel
-            end
+            cachedFuelProvider = provider
+            return provider
         end
     end
 
@@ -52,14 +60,26 @@ local function getFuel(vehicle)
         for i = 1, #Config.FuelProviders do
             local provider = Config.FuelProviders[i]
             if provider and provider.resource and resourceStarted(provider.resource) then
-                local fuel = getFuelFromProvider(vehicle, provider)
-                if fuel ~= nil then
-                    return fuel
-                end
+                cachedFuelProvider = provider
+                return provider
             end
         end
     end
 
+    cachedFuelProvider = false
+    return false
+end
+
+local function getFuel(vehicle)
+    local provider = resolveFuelProvider()
+    if provider then
+        local fuel = getFuelFromProvider(vehicle, provider)
+        if fuel ~= nil then
+            return fuel
+        end
+        -- Provider started but returned nil once — fall through to native and retry resolve soon.
+        fuelProviderUntil = 0
+    end
     return GetVehicleFuelLevel(vehicle)
 end
 
@@ -188,11 +208,6 @@ local function isElectricVehicle(vehicle)
     return okTank and type(tank) == 'number' and tank <= 0.01
 end
 
-local function isAirborne(vehicle)
-    local class = GetVehicleClass(vehicle)
-    return class == 15 or class == 16
-end
-
 local function gearLabel(vehicle, speedMs, airborne)
     if airborne then
         return 'N'
@@ -276,13 +291,55 @@ AddEventHandler('onResourceStart', function(resource)
     if resource == JG_MILEAGE_RESOURCE and Config.JGMileage == true then
         refreshJgMileageUnit()
     end
+    fuelProviderUntil = 0
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == JG_MILEAGE_RESOURCE then
         jgMileageUnit = nil
     end
+    fuelProviderUntil = 0
 end)
+
+-- Per-vehicle statics (class / EV / seatbelt UI) — refreshed on vehicle change only.
+local vehMeta = {
+    entity = 0,
+    class = 0,
+    airborne = false,
+    seatbeltVisible = false,
+    electric = false,
+    mileage = nil,
+    mileageUnit = nil,
+    mileageAt = 0,
+}
+
+local function refreshVehMeta(vehicle)
+    if vehMeta.entity == vehicle then
+        return
+    end
+    local class = GetVehicleClass(vehicle)
+    local airborne = class == 15 or class == 16
+    vehMeta.entity = vehicle
+    vehMeta.class = class
+    vehMeta.airborne = airborne
+    vehMeta.seatbeltVisible = not airborne and class ~= 8 and class ~= 13 and class ~= 14 and class ~= 21
+    vehMeta.electric = isElectricVehicle(vehicle)
+    vehMeta.mileage = nil
+    vehMeta.mileageUnit = nil
+    vehMeta.mileageAt = 0
+end
+
+local function readMileage(vehicle)
+    local now = GetGameTimer()
+    if now - vehMeta.mileageAt < 1000 then
+        return vehMeta.mileage, vehMeta.mileageUnit
+    end
+    local mileage, unit = getJgMileage(vehicle, vehMeta.class)
+    vehMeta.mileage = mileage
+    vehMeta.mileageUnit = unit
+    vehMeta.mileageAt = now
+    return mileage, unit
+end
 
 CreateThread(function()
     while true do
@@ -293,46 +350,51 @@ CreateThread(function()
 
             if vehicle ~= 0 then
                 RynHud.InVehicle = true
-                local speedMs = GetEntitySpeed(vehicle)
-                local units = (RynHud.Theme and RynHud.Theme.vehicle and RynHud.Theme.vehicle.units) or 'mph'
-                local speed = units == 'kph' and (speedMs * 3.6) or (speedMs * 2.236936)
-                local rpm = GetVehicleCurrentRpm(vehicle)
-                local engine = RynHud.Clamp(GetVehicleEngineHealth(vehicle) / 10.0, 0, 100)
-                local airborne = isAirborne(vehicle)
-                local class = GetVehicleClass(vehicle)
-                local seatbeltVisible = not airborne and class ~= 8 and class ~= 13 and class ~= 14 and class ~= 21
-                local seatbelt = getSeatbelt()
-                if seatbeltVisible and lastSeatbeltSound ~= nil and lastSeatbeltSound ~= seatbelt then
-                    playSeatbeltSound(seatbelt)
+                refreshVehMeta(vehicle)
+                if RynHud.ShouldPushHud and not RynHud.ShouldPushHud() then
+                    wait = math.max(wait, 250)
+                else
+                    local speedMs = GetEntitySpeed(vehicle)
+                    local units = (RynHud.Theme and RynHud.Theme.vehicle and RynHud.Theme.vehicle.units) or 'mph'
+                    local speed = units == 'kph' and (speedMs * 3.6) or (speedMs * 2.236936)
+                    local rpm = GetVehicleCurrentRpm(vehicle)
+                    local engine = RynHud.Clamp(GetVehicleEngineHealth(vehicle) / 10.0, 0, 100)
+                    local airborne = vehMeta.airborne
+                    local seatbeltVisible = vehMeta.seatbeltVisible
+                    local seatbelt = getSeatbelt()
+                    if seatbeltVisible and lastSeatbeltSound ~= nil and lastSeatbeltSound ~= seatbelt then
+                        playSeatbeltSound(seatbelt)
+                    end
+                    lastSeatbeltSound = seatbelt
+                    local mileage, mileageUnit = readMileage(vehicle)
+                    local showMileage = mileage ~= nil
+                    RynHud.PatchState({
+                        vehicle = {
+                            active = true,
+                            speed = RynHud.Round(speed),
+                            rpm = RynHud.Round(RynHud.Clamp(rpm * 100, 0, 100)),
+                            gear = gearLabel(vehicle, speedMs, airborne),
+                            fuel = RynHud.Round(RynHud.Clamp(getFuel(vehicle), 0, 100)),
+                            fuelKind = vehMeta.electric and 'electric' or 'petrol',
+                            engine = RynHud.Round(engine),
+                            seatbelt = seatbelt,
+                            seatbeltVisible = seatbeltVisible,
+                            cruise = LocalPlayer.state.cruise == true,
+                            airborne = airborne,
+                            altitude = airborne and RynHud.Round(GetEntityHeightAboveGround(vehicle)) or 0,
+                            heading = airborne and RynHud.Round(GetEntityHeading(vehicle)) or 0,
+                            mileage = showMileage and mileage or 0,
+                            mileageUnit = mileageUnit or 'mi',
+                            mileageVisible = showMileage,
+                        },
+                    })
                 end
-                lastSeatbeltSound = seatbelt
-                local mileage, mileageUnit = getJgMileage(vehicle, class)
-                local showMileage = mileage ~= nil
-                RynHud.PatchState({
-                    vehicle = {
-                        active = true,
-                        speed = RynHud.Round(speed),
-                        rpm = RynHud.Round(RynHud.Clamp(rpm * 100, 0, 100)),
-                        gear = gearLabel(vehicle, speedMs, airborne),
-                        fuel = RynHud.Round(RynHud.Clamp(getFuel(vehicle), 0, 100)),
-                        fuelKind = isElectricVehicle(vehicle) and 'electric' or 'petrol',
-                        engine = RynHud.Round(engine),
-                        seatbelt = seatbelt,
-                        seatbeltVisible = seatbeltVisible,
-                        cruise = LocalPlayer.state.cruise == true,
-                        airborne = airborne,
-                        altitude = airborne and RynHud.Round(GetEntityHeightAboveGround(vehicle)) or 0,
-                        heading = airborne and RynHud.Round(GetEntityHeading(vehicle)) or 0,
-                        mileage = showMileage and mileage or 0,
-                        mileageUnit = mileageUnit or 'mi',
-                        mileageVisible = showMileage,
-                    },
-                })
             else
                 if RynHud.InVehicle then
                     RynHud.InVehicle = false
                     RynHud.Seatbelt = false
                     lastSeatbeltSound = nil
+                    vehMeta.entity = 0
                     RynHud.PatchState({
                         vehicle = {
                             active = false,
@@ -354,7 +416,7 @@ CreateThread(function()
                         },
                     })
                 end
-                wait = 250
+                wait = 350
             end
         else
             wait = 500

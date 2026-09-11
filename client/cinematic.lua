@@ -20,8 +20,10 @@ function RynHud.SetCinematic(active, silent)
         if not silent then
             RynHud.Notify('cinematic_on')
         end
-    elseif not silent then
-        RynHud.Notify('cinematic_off')
+    else
+        if not silent then
+            RynHud.Notify('cinematic_off')
+        end
     end
 
     return active

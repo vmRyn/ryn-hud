@@ -187,9 +187,10 @@ local function startProgress(data, maybeDuration)
 
     local cancelControl = tonumber(cfg().cancelControl) or 73
     local endsAt = GetGameTimer() + duration
+    local disable = active.disable == true
 
     while active and active.id == id and GetGameTimer() < endsAt do
-        if active.disable then
+        if disable then
             DisableControlAction(0, 24, true)
             DisableControlAction(0, 25, true)
             DisableControlAction(0, 21, true)
@@ -209,7 +210,8 @@ local function startProgress(data, maybeDuration)
             break
         end
 
-        Wait(0)
+        -- Control disables must run every frame; otherwise tick lightly.
+        Wait(disable and 0 or 50)
     end
 
     if active and active.id == id then

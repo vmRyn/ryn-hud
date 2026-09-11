@@ -64,6 +64,7 @@ const analogRpmArc = computed(() =>
 )
 
 const analogMarks = computed(() => {
+  if (style.value !== 'analog') return []
   const max = maxSpeed.value
   const majorEvery = units.value === 'kph' ? 40 : 20
   const minorEvery = units.value === 'kph' ? 20 : 10

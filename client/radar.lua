@@ -5,6 +5,8 @@ local lastInVehicle = false
 local lastMapShape = nil
 local shapeToken = 0
 local layoutReady = false
+local lastRadarAssert = 0
+local RADAR_REASSERT_MS = 750
 
 local function radarAllowed()
     return not RynHud.Cinematic and RynHud.HudVisible ~= false and not RynHud.Obscured
@@ -122,8 +124,9 @@ end)
 
 CreateThread(function()
     while true do
-        local wait = 100
-        local inVehicle = IsPedInAnyVehicle(PlayerPedId(), false)
+        local wait = 150
+        local ped = PlayerPedId()
+        local inVehicle = IsPedInAnyVehicle(ped, false)
         local want = desiredRadar(inVehicle)
 
         if inVehicle and not lastInVehicle then
@@ -131,6 +134,7 @@ CreateThread(function()
             RynHud.SendNui('setVehicleScene', { active = true })
             RynHud.ApplyMinimapShape(true)
             queueRadar(true, Config.MinimapDelayMs or 80)
+            wait = 80
         elseif not inVehicle and lastInVehicle then
             RynHud.VehicleVisible = false
             RynHud.SendNui('setVehicleScene', { active = false })
@@ -139,6 +143,7 @@ CreateThread(function()
             else
                 queueRadar(false, Config.RadarHideAfterExitMs or 420)
             end
+            wait = 120
         elseif want ~= expectRadar then
             if want then
                 queueRadar(true, inVehicle and (Config.MinimapDelayMs or 80) or 0)
@@ -148,9 +153,16 @@ CreateThread(function()
                 setRadar(false)
             end
         elseif want and inVehicle then
-            DisplayRadar(true)
-            radarVisible = true
-            wait = 200
+            -- Re-assert occasionally; other scripts / bigmap can flip radar off.
+            local now = GetGameTimer()
+            if not radarVisible or (now - lastRadarAssert) >= RADAR_REASSERT_MS then
+                DisplayRadar(true)
+                radarVisible = true
+                lastRadarAssert = now
+            end
+            wait = 400
+        elseif not want then
+            wait = 400
         end
 
         lastInVehicle = inVehicle

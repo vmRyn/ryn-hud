@@ -27,15 +27,19 @@ CreateThread(function()
     while true do
         local wait = Config.StatusTick or 200
         if RynHud.Loaded then
-            local ped = PlayerPedId()
-            local needs = RynHud.GetBridge().getNeeds()
-            RynHud.PatchState({
-                health = displayHealth(ped),
-                armor = RynHud.Round(RynHud.Clamp(GetPedArmour(ped), 0, 100)),
-                hunger = needValue(needs.hunger, 100),
-                thirst = needValue(needs.thirst, 100),
-                stress = needs.stress ~= nil and RynHud.Round(RynHud.Clamp(needs.stress, 0, 100)) or nil,
-            })
+            if RynHud.ShouldPushHud and not RynHud.ShouldPushHud() then
+                wait = math.max(wait, 400)
+            else
+                local ped = PlayerPedId()
+                local needs = RynHud.GetBridge().getNeeds()
+                RynHud.PatchState({
+                    health = displayHealth(ped),
+                    armor = RynHud.Round(RynHud.Clamp(GetPedArmour(ped), 0, 100)),
+                    hunger = needValue(needs.hunger, 100),
+                    thirst = needValue(needs.thirst, 100),
+                    stress = needs.stress ~= nil and RynHud.Round(RynHud.Clamp(needs.stress, 0, 100)) or nil,
+                })
+            end
         else
             wait = 500
         end

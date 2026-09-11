@@ -10,17 +10,37 @@ local function valuesEqual(a, b)
     if type(a) ~= 'table' or type(b) ~= 'table' then
         return false
     end
+    local nA, nB = 0, 0
     for k, v in pairs(a) do
+        nA = nA + 1
         if not valuesEqual(v, b[k]) then
             return false
         end
     end
-    for k in pairs(b) do
-        if a[k] == nil then
-            return false
+    for _ in pairs(b) do
+        nB = nB + 1
+    end
+    return nA == nB
+end
+
+-- Shallow copy for flat HUD patches (vehicle/voice/identity/compass leaves).
+local function copyValue(value)
+    if type(value) ~= 'table' then
+        return value
+    end
+    local out = {}
+    for k, v in pairs(value) do
+        if type(v) == 'table' then
+            local nested = {}
+            for nk, nv in pairs(v) do
+                nested[nk] = nv
+            end
+            out[k] = nested
+        else
+            out[k] = v
         end
     end
-    return true
+    return out
 end
 
 local function round(value)
@@ -45,6 +65,14 @@ function RynHud.Clamp(value, min, max)
     return value
 end
 
+--- True when status/vehicle/contextual patches should hit NUI.
+function RynHud.ShouldPushHud()
+    return RynHud.Loaded
+        and RynHud.HudVisible ~= false
+        and not RynHud.Cinematic
+        and not RynHud.Obscured
+end
+
 function RynHud.Notify(key)
     BeginTextCommandThefeedPost('STRING')
     AddTextComponentSubstringPlayerName(L(key))
@@ -64,7 +92,7 @@ function RynHud.PatchState(patch)
     for key, value in pairs(patch) do
         if not valuesEqual(lastSent[key], value) then
             diff[key] = value
-            lastSent[key] = RynHud.DeepCopy(value)
+            lastSent[key] = copyValue(value)
             changed = true
         end
     end

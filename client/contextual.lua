@@ -2,7 +2,7 @@ local talking = false
 local voiceMode = 2
 local radio = false
 local peekUntil = 0
-local weaponCache = { hash = 0, label = '', fireMode = '' }
+local weaponCache = { hash = 0, label = '', fireMode = '', hasAmmo = false }
 
 local FIRE_BY_GROUP = {
     [416676503] = 'Semi',
@@ -82,14 +82,15 @@ end
 
 local function weaponMeta(hash)
     if weaponCache.hash == hash then
-        return weaponCache.label, fireModeFor(hash) or weaponCache.fireMode
+        return weaponCache.label, fireModeFor(hash) or weaponCache.fireMode, weaponCache.hasAmmo
     end
     local label = prettyWeaponLabel(hash)
     local fireMode = fireModeFor(hash) or ''
     weaponCache.hash = hash
     weaponCache.label = label
     weaponCache.fireMode = fireMode
-    return label, fireMode
+    weaponCache.hasAmmo = nil
+    return label, fireMode, nil
 end
 
 local directions = { 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW' }
@@ -166,14 +167,21 @@ local function currentWeapon(ped)
         reserve = 0
     end
 
-    local label, fireMode = weaponMeta(hash)
+    local label, fireMode, cachedHasAmmo = weaponMeta(hash)
+    local hasAmmo = cachedHasAmmo
+    if hasAmmo == nil then
+        hasAmmo = weaponUsesAmmo(ped, hash)
+        if weaponCache.hash == hash then
+            weaponCache.hasAmmo = hasAmmo
+        end
+    end
 
     return {
         show = true,
         hash = hash,
         clip = clip,
         reserve = reserve,
-        hasAmmo = weaponUsesAmmo(ped, hash),
+        hasAmmo = hasAmmo,
         label = label,
         fireMode = fireMode ~= '' and fireMode or nil,
     }
@@ -211,43 +219,66 @@ end, false)
 
 CreateThread(function()
     while true do
+        local wait = 200
         if RynHud.Loaded then
-            local ped = PlayerPedId()
-            local player = PlayerId()
-            talking = NetworkIsPlayerTalking(player)
-            local mumbleOk, mumbleTalking = pcall(MumbleIsPlayerTalking, player)
-            if mumbleOk then
-                talking = talking or mumbleTalking
+            if RynHud.ShouldPushHud and not RynHud.ShouldPushHud() then
+                wait = 400
+            else
+                local ped = PlayerPedId()
+                local player = PlayerId()
+                talking = NetworkIsPlayerTalking(player)
+                if not talking then
+                    local mumbleOk, mumbleTalking = pcall(MumbleIsPlayerTalking, player)
+                    if mumbleOk then
+                        talking = mumbleTalking and true or false
+                    end
+                end
+
+                local inVehicle = IsPedInAnyVehicle(ped, false)
+                local stamina = 100.0
+                local staminaActive = false
+                if not inVehicle then
+                    stamina = GetPlayerSprintStaminaRemaining(player)
+                    staminaActive = stamina < 95.0
+                end
+
+                local underWater = IsPedSwimmingUnderWater(ped)
+                local oxygen = 100
+                if underWater then
+                    oxygen = RynHud.Round(RynHud.Clamp(GetPlayerUnderwaterTimeRemaining(player) * 10.0, 0, 100))
+                end
+
+                local parachuteState = GetPedParachuteState(ped)
+                local weapon = currentWeapon(ped)
+                local harness = LocalPlayer.state.harness == true
+                voiceMode = readVoiceMode()
+
+                RynHud.PatchState({
+                    voice = {
+                        talking = talking,
+                        mode = voiceMode,
+                        radio = radio,
+                    },
+                    stamina = RynHud.Round(stamina),
+                    staminaActive = staminaActive,
+                    oxygen = oxygen,
+                    oxygenActive = underWater,
+                    weapon = weapon,
+                    parachute = parachuteState ~= -1,
+                    harness = harness,
+                })
+
+                -- Hotter tick while talking / armed / underwater / low stamina.
+                if talking or radio or underWater or staminaActive or weapon then
+                    wait = 120
+                else
+                    wait = 250
+                end
             end
-
-            local stamina = GetPlayerSprintStaminaRemaining(player)
-            local underWater = IsPedSwimmingUnderWater(ped)
-            local oxygen = 100
-            if underWater then
-                oxygen = RynHud.Round(RynHud.Clamp(GetPlayerUnderwaterTimeRemaining(player) * 10.0, 0, 100))
-            end
-
-            local parachuteState = GetPedParachuteState(ped)
-            local weapon = currentWeapon(ped)
-            local harness = LocalPlayer.state.harness == true
-            voiceMode = readVoiceMode()
-
-            RynHud.PatchState({
-                voice = {
-                    talking = talking,
-                    mode = voiceMode,
-                    radio = radio,
-                },
-                stamina = RynHud.Round(stamina),
-                staminaActive = stamina < 95.0 and not IsPedInAnyVehicle(ped, false),
-                oxygen = oxygen,
-                oxygenActive = underWater,
-                weapon = weapon,
-                parachute = parachuteState ~= -1,
-                harness = harness,
-            })
+        else
+            wait = 500
         end
-        Wait(150)
+        Wait(wait)
     end
 end)
 
@@ -255,7 +286,7 @@ CreateThread(function()
     while true do
         local wait = Config.CompassTick or 400
         local showCompass = RynHud.Theme and RynHud.Theme.visibility and RynHud.Theme.visibility.compass
-        if RynHud.Loaded and showCompass then
+        if RynHud.Loaded and showCompass and (not RynHud.ShouldPushHud or RynHud.ShouldPushHud()) then
             local ped = PlayerPedId()
             local coords = GetEntityCoords(ped)
             local heading = GetEntityHeading(ped)
@@ -276,13 +307,14 @@ CreateThread(function()
                 },
             })
         else
-            wait = 800
+            wait = 900
         end
         Wait(wait)
     end
 end)
 
 CreateThread(function()
+    local lastShowing = false
     while true do
         local wait = Config.IdentityTick or 1000
         if RynHud.Loaded then
@@ -293,19 +325,40 @@ CreateThread(function()
             local alwaysJob = peekTheme and peekTheme.job == true
             local peek = peekEnabled and (holding or GetGameTimer() < peekUntil)
             RynHud.Peeking = peek
-            local identity = RynHud.GetBridge().getIdentity()
-            RynHud.PatchState({
-                identity = {
-                    job = identity.job,
-                    cash = identity.cash,
-                    bank = identity.bank,
-                    peek = peek,
-                    showMoney = alwaysMoney or peek,
-                    showJob = alwaysJob or peek,
-                },
-            })
-            if holding then
-                wait = 120
+            local showMoney = alwaysMoney or peek
+            local showJob = alwaysJob or peek
+            local showing = showMoney or showJob
+
+            if showing then
+                local identity = RynHud.GetBridge().getIdentity()
+                RynHud.PatchState({
+                    identity = {
+                        job = identity.job,
+                        cash = identity.cash,
+                        bank = identity.bank,
+                        peek = peek,
+                        showMoney = showMoney,
+                        showJob = showJob,
+                    },
+                })
+                lastShowing = true
+                if holding then
+                    wait = 120
+                elseif peek then
+                    wait = 250
+                end
+            elseif lastShowing then
+                RynHud.PatchState({
+                    identity = {
+                        job = '',
+                        cash = 0,
+                        bank = 0,
+                        peek = false,
+                        showMoney = false,
+                        showJob = false,
+                    },
+                })
+                lastShowing = false
             end
         else
             wait = 500

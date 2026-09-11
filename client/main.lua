@@ -8,12 +8,6 @@ RynHud.AdminOpen = false
 local hideComponents = { 1, 2, 3, 4, 6, 7, 8, 9, 13, 17, 19, 20, 21, 22 }
 local RESOURCE = GetCurrentResourceName()
 
-local function hideNativeHud()
-    for i = 1, #hideComponents do
-        HideHudComponentThisFrame(hideComponents[i])
-    end
-end
-
 local function bootHud()
     if RynHud.Loaded then
         return
@@ -41,9 +35,14 @@ CreateThread(function()
     bootHud()
 end)
 
+-- HideHudComponentThisFrame must run every frame.
 CreateThread(function()
+    local components = hideComponents
+    local count = #components
     while true do
-        hideNativeHud()
+        for i = 1, count do
+            HideHudComponentThisFrame(components[i])
+        end
         Wait(0)
     end
 end)

@@ -46,9 +46,9 @@ Config.SeatbeltEvents = {
 Config.SeatbeltSounds = true
 Config.SeatbeltSoundVolume = 0.45
 
-Config.StatusTick = 200
+Config.StatusTick = 250
 Config.VehicleTick = 100
-Config.CompassTick = 400
+Config.CompassTick = 500
 Config.IdentityTick = 1000
 
 -- Display HP that maps to a full health glyph (GTA ped: entity 100 + this value).
